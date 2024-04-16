@@ -1,0 +1,86 @@
+
+# https://github.com/qclaogui/codelab-monitoring/blob/main/alloy-modules/compose/README.md
+x-labels: &profiles-labels
+  profiles.grafana.com/cpu.scrape: true
+  profiles.grafana.com/memory.scrape: true
+  profiles.grafana.com/goroutine.scrape: true
+
+x-environment: &jaeger-environment
+  JAEGER_AGENT_HOST: alloy
+  JAEGER_AGENT_PORT: 6831
+  JAEGER_SAMPLER_TYPE: const
+  JAEGER_SAMPLER_PARAM: 1
+
+services:
+  # override compose.yaml included service loki's labels and environment to enabled profiles and traces data collection
+  loki:
+    labels:
+      <<: *profiles-labels
+      logs.grafana.com/scrape: true
+      metrics.grafana.com/scrape: true
+      profiles.grafana.com/service_name: loki
+    environment:
+      <<: *jaeger-environment
+      JAEGER_TAGS: app=loki
+
+  # override compose.yaml included service grafana's labels and environment to enabled profiles data collection
+  grafana:
+    labels:
+      <<: *profiles-labels
+      logs.grafana.com/scrape: true
+      metrics.grafana.com/scrape: true
+      profiles.grafana.com/service_name: grafana
+      profiles.grafana.com/port: 6060
+    volumes:
+      - ./monitoring-mixins/loki-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/loki-mixin
+      - ./monitoring-mixins/tempo-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/tempo-mixin
+      - ./monitoring-mixins/mimir-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/mimir-mixin
+      - ./monitoring-mixins/pyroscope-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/pyroscope-mixin
+    environment:
+      GF_LOG_LEVEL: ${GF_LOG_LEVEL:-warn}
+      GF_DIAGNOSTICS_PROFILING_ENABLED: true
+      GF_DIAGNOSTICS_PROFILING_ADDR: 0.0.0.0
+      GF_DIAGNOSTICS_PROFILING_PORT: 6060
+
+  # override compose.yaml included service tempo's labels and environment to enabled profiles and traces data collection
+  tempo:
+    labels:
+      <<: *profiles-labels
+      logs.grafana.com/scrape: true
+      metrics.grafana.com/scrape: true
+      profiles.grafana.com/service_name: tempo
+    depends_on: { minio: { condition: service_healthy }, mimir: { condition: service_healthy } }
+    environment:
+      <<: *jaeger-environment
+      JAEGER_TAGS: app=tempo
+
+  # override compose.yaml included service mimir's labels and environment to enabled profiles and traces data collection
+  mimir:
+    labels:
+      <<: *profiles-labels
+      logs.grafana.com/scrape: true
+      metrics.grafana.com/scrape: true
+      profiles.grafana.com/service_name: mimir
+    environment:
+      <<: *jaeger-environment
+      JAEGER_TAGS: app=mimir
+
+  # override included service mimirtool for rules and alerts pre-provisioning
+  mimirtool:
+    volumes:
+      - ./monitoring-mixins/loki-mixin/deploy/loki-mixin-rules.yaml:/rules/loki-mixin-rules.yaml
+      - ./monitoring-mixins/loki-mixin/deploy/loki-mixin-alerts.yaml:/rules/loki-mixin-alerts.yaml
+      - ./monitoring-mixins/tempo-mixin/deploy/tempo-mixin-rules.yaml:/rules/tempo-mixin-rules.yaml
+      - ./monitoring-mixins/tempo-mixin/deploy/tempo-mixin-alerts.yaml:/rules/tempo-mixin-alerts.yaml
+      - ./monitoring-mixins/mimir-mixin/deploy/mimir-mixin-rules.yaml:/rules/mimir-mixin-rules.yaml
+      - ./monitoring-mixins/mimir-mixin/deploy/mimir-mixin-alerts.yaml:/rules/mimir-mixin-alerts.yaml
+      - ./monitoring-mixins/pyroscope-mixin/deploy/pyroscope-mixin-rules.yaml:/rules/pyroscope-mixin-rules.yaml
+  # override compose.yaml included service pyroscope's labels and environment to enabled traces data collection
+  pyroscope:
+    labels:
+      logs.grafana.com/scrape: true
+      metrics.grafana.com/scrape: true
+      profiles.grafana.com/service_name: pyroscope
+    environment:
+      <<: *jaeger-environment
+      JAEGER_TAGS: app=pyroscope

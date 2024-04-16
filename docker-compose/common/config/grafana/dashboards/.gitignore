@@ -1,0 +1,4 @@
+*
+!.gitignore
+!minio-dashboard.json
+!docker.json

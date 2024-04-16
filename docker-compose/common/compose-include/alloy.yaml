@@ -1,0 +1,35 @@
+services:
+  alloy:
+    depends_on: { gateway: { condition: service_healthy } }
+    image: ${ALLOY_IMAGE:-docker.io/grafana/alloy:v1.0.0}
+    configs:
+      - source: alloy_config_file
+        target: /etc/alloy/config.alloy
+    volumes:
+      - ../../../alloy-modules:/etc/alloy/modules
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /:/rootfs:ro
+      - /sys:/sys:ro
+    entrypoint:
+      - /bin/alloy
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --cluster.enabled=true
+      - --cluster.join-addresses=alloy-cluster:12345
+      - --disable-reporting=true
+      - --stability.level=experimental
+      - --storage.path=/var/lib/alloy/data
+    environment:
+      - ALLOY_MODULES_FOLDER=/etc/alloy/modules
+      - ALLOY_LOG_LEVEL=warn
+    ports:
+      - "12345:12345"
+      # - "12345-12348:12345" # Note: max replicas num is 3.
+    deploy:
+      replicas: 1
+    networks:
+      default:
+        aliases:
+          - alloy-cluster

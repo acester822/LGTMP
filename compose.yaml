@@ -1,0 +1,55 @@
+# ============================================================================ #
+#                  Highly Customized Usage Examples
+# ============================================================================ #
+
+# ```shell
+#   git clone https://github.com/qclaogui/codelab-monitoring.git && cd "$(basename "$_" .git)"
+#
+#   COMPOSE_EXPERIMENTAL_GIT_REMOTE=true docker compose up -d --remove-orphans
+# ```
+
+# Note: 
+# include is available in Docker Compose version 2.20 and later, and Docker Desktop version 4.22 and later.
+# docs: https://docs.docker.com/compose/multiple-compose-files/include/#include-and-overrides
+include:
+  - path: ./docker-compose/common/compose-include/minio.yaml
+  - path: ./docker-compose/common/compose-include/memcached.yaml
+  - path: ./docker-compose/common/compose-include/alloy.yaml
+  #  Self Hosted Grafana LGTMP Stack
+  - path: ./docker-compose/common/compose-include/loki.yaml
+  - path: ./docker-compose/common/compose-include/grafana.yaml
+  - path: ./docker-compose/common/compose-include/tempo.yaml
+  - path: ./docker-compose/common/compose-include/mimir.yaml
+  - path: ./docker-compose/common/compose-include/pyroscope.yaml
+
+configs:
+  alloy_config_file:
+    file: ./docker-compose/common/config/alloy/all-in-one.alloy
+
+services:
+  gateway:
+    labels:
+      metrics.grafana.com/scrape: false
+    depends_on:
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+      mimir:
+        condition: service_healthy
+      pyroscope:
+        condition: service_healthy
+    image: ${NGINX_IMAGE:-docker.io/nginxinc/nginx-unprivileged:1.25-alpine}
+    restart: always
+    volumes:
+      - ./docker-compose/common/config/nginx/10-default-lgtmp.envsh:/docker-entrypoint.d/10-default-lgtmp.envsh
+      - ./docker-compose/common/config/nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template
+      - ./docker-compose/common/config/loki/gateway_loki.conf:/etc/nginx/templates/gateway_loki.conf.template
+      - ./docker-compose/common/config/tempo/gateway_tempo.conf:/etc/nginx/templates/gateway_tempo.conf.template
+      - ./docker-compose/common/config/mimir/gateway_mimir.conf:/etc/nginx/templates/gateway_mimir.conf.template
+      - ./docker-compose/common/config/pyroscope/gateway_pyroscope.conf:/etc/nginx/templates/gateway_pyroscope.conf.template
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1" ]
+      interval: 3s
+      timeout: 1s
+      retries: 20

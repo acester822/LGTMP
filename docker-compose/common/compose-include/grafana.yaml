@@ -1,0 +1,41 @@
+
+services:
+  # Inbucket is an email testing service; it will accept email for any email
+  # address and make it available to view without a password
+  #
+  # https://inbucket.org/packages/docker.html
+  # https://github.com/inbucket/inbucket/blob/main/doc/config.md
+  inbucket:
+    labels:
+      metrics.grafana.com/scrape: false
+    image: ${INBUCKET_IMAGE:-inbucket/inbucket:3.0.4}
+    ports:
+      - 2500 # SMTP
+      - "39000:9000" # HTTP
+      - 1100 # POP3
+    volumes:
+      - inbucket_data:/storage
+      - inbucket_data:/config
+
+  grafana:
+    labels:
+      metrics.grafana.com/scrape: false
+    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:10.4.1}
+    command:
+      - --config=/etc/grafana-config/grafana.ini
+    volumes:
+      - ../config/grafana/grafana.ini:/etc/grafana-config/grafana.ini
+      - ../config/grafana/dashboards:/var/lib/grafana/dashboards
+      - ../config/grafana/provisioning:/etc/grafana/provisioning
+      - ../../../monitoring-mixins/alloy-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/alloy-mixin
+      - ../../../monitoring-mixins/memcached-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/memcached-mixin
+      - ../../../monitoring-mixins/go-runtime-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/go-runtime-mixin
+    environment:
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor tracesEmbeddedFlameGraph traceqlSearch correlations metricsSummary traceToMetrics traceToProfiles
+      GF_SMTP_ENABLED: true
+      GF_SMTP_HOST: inbucket:2500
+    ports:
+      - "3000:3000"
+
+volumes:
+  inbucket_data:
