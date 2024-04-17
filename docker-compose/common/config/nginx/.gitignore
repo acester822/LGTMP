@@ -1,5 +1,0 @@
-*
-!.gitignore
-!nginx.conf
-!10-default-lgtmp.envsh
-!50-move-nginx-conf.sh
