@@ -2,7 +2,7 @@
 #                  Monolithic Mode - All in one
 # ============================================================================ #
 
-# Note: 
+# Note:
 # include is available in Docker Compose version 2.20 and later, and Docker Desktop version 4.22 and later.
 # docs: https://docs.docker.com/compose/multiple-compose-files/include/#include-and-overrides
 include:
@@ -57,7 +57,8 @@ services:
   loki:
     labels:
       <<: *profiles-labels
-      metrics.grafana.com/scrape: false
+      logs.grafana.com/scrape: true
+      metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: loki
     depends_on: { minio: { condition: service_healthy } }
     image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.0.0}
@@ -84,7 +85,8 @@ services:
   tempo:
     labels:
       <<: *profiles-labels
-      metrics.grafana.com/scrape: false
+      logs.grafana.com/scrape: true
+      metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: tempo
     depends_on: { minio: { condition: service_healthy }, mimir: { condition: service_healthy } }
     image: ${TEMPO_IMAGE:-docker.io/grafana/tempo:2.4.1}
@@ -108,7 +110,8 @@ services:
   mimir:
     labels:
       <<: *profiles-labels
-      metrics.grafana.com/scrape: false
+      logs.grafana.com/scrape: true
+      metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: mimir
     depends_on: { minio: { condition: service_healthy } }
     image: ${MIMIR_IMAGE:-docker.io/grafana/mimir:2.12.0}
@@ -142,6 +145,13 @@ services:
       - ../../../monitoring-mixins/crontab:/etc/crontabs/root
       - ../../../monitoring-mixins/alloy-mixin/deploy/alloy-mixin-alerts.yaml:/rules/alloy-mixin-alerts.yaml
       - ../../../monitoring-mixins/memcached-mixin/deploy/memcached-mixin-alerts.yaml:/rules/memcached-mixin-alerts.yaml
+      - ../../../monitoring-mixins/loki-mixin/deploy/loki-mixin-rules.yaml:/rules/loki-mixin-rules.yaml
+      - ../../../monitoring-mixins/loki-mixin/deploy/loki-mixin-alerts.yaml:/rules/loki-mixin-alerts.yaml
+      - ../../../monitoring-mixins/tempo-mixin/deploy/tempo-mixin-rules.yaml:/rules/tempo-mixin-rules.yaml
+      - ../../../monitoring-mixins/tempo-mixin/deploy/tempo-mixin-alerts.yaml:/rules/tempo-mixin-alerts.yaml
+      - ../../../monitoring-mixins/mimir-mixin/deploy/mimir-mixin-rules.yaml:/rules/mimir-mixin-rules.yaml
+      - ../../../monitoring-mixins/mimir-mixin/deploy/mimir-mixin-alerts.yaml:/rules/mimir-mixin-alerts.yaml
+      - ../../../monitoring-mixins/pyroscope-mixin/deploy/pyroscope-mixin-rules.yaml:/rules/pyroscope-mixin-rules.yaml
     environment:
       - MIMIR_ADDRESS=http://gateway:8080
       - MIMIR_TENANT_ID=anonymous
@@ -150,7 +160,8 @@ services:
 
   pyroscope:
     labels:
-      metrics.grafana.com/scrape: false
+      logs.grafana.com/scrape: true
+      metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: pyroscope
     depends_on: { minio: { condition: service_healthy } }
     image: ${PYROSCOPE_IMAGE:-docker.io/grafana/pyroscope:1.5.0}

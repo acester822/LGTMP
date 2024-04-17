@@ -8,7 +8,7 @@
 #   COMPOSE_EXPERIMENTAL_GIT_REMOTE=true docker compose up -d --remove-orphans
 # ```
 
-# Note: 
+# Note:
 # include is available in Docker Compose version 2.20 and later, and Docker Desktop version 4.22 and later.
 # docs: https://docs.docker.com/compose/multiple-compose-files/include/#include-and-overrides
 include:
@@ -21,6 +21,7 @@ include:
   - path: ./docker-compose/common/compose-include/tempo.yaml
   - path: ./docker-compose/common/compose-include/mimir.yaml
   - path: ./docker-compose/common/compose-include/pyroscope.yaml
+  - path: ./compose.override.yaml
 
 configs:
   alloy_config_file:

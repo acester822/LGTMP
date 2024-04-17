@@ -3,13 +3,12 @@
 > **NOTE**:
 > As of 4/15/2024
 
-
 - [ ] Create #Github-Exporter  Docker Compose File
 - [ ] Create #All-In-One-compose-yaml  Docker Compose File
-- [ ] Create #Compose-Includes-Needed  referenced in #All-In-One-compose-yaml  
+- [ ] Create #Compose-Includes-Needed  referenced in #All-In-One-compose-yaml
 - [ ] Create #Config files needed for all programs
 
-##  #Github-Exporter
+## #Github-Exporter
 
 Step 1: Create Github Exporter compose.yaml
 
@@ -56,7 +55,6 @@ services:
 ## #All-In-One-compose-yaml
 
 Step 2: Create the compose.yaml that you referenced above
-
 
 ```yaml
 version: '3.9'
