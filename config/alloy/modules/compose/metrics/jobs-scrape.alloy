@@ -43,4 +43,14 @@ declare "jobs_scrape" {
 		scrape_interval = coalesce(argument.scrape_interval.value, "60s")
 		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
 	}
+
+	/********************************************
+	* Traefik Metrics Exporter
+	********************************************/
+	jobs.component_traefik_metrics "traefik_metrics" {
+		forward_to = argument.forward_to.value
+
+		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
+		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
+	}
 }

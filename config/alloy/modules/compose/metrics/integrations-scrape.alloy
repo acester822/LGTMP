@@ -40,7 +40,7 @@ declare "integrations_scrape" {
 	integrate.component_cadvisor "default" {
 		forward_to = argument.forward_to.value
 
-		scrape_interval = coalesce(argument.scrape_interval.value, "60s")
+		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
 		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
 	}
 
@@ -50,7 +50,7 @@ declare "integrations_scrape" {
 	integrate.component_node_exporter "default" {
 		forward_to = argument.forward_to.value
 
-		scrape_interval = coalesce(argument.scrape_interval.value, "60s")
+		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
 		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
 	}
 
@@ -67,4 +67,5 @@ declare "integrations_scrape" {
 		memcached_timeout  = "5s"
 		memcached_instance = "primary"
 	}
+
 }

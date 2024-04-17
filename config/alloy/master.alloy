@@ -65,6 +65,11 @@ logs.keep_labels "compose" {
 	forward_to = [provider.self_hosted_stack.compose.logs_receiver]
 }
 
+// logs Processing And Transformation
+logs.component_journals "default" {
+	forward_to = [provider.self_hosted_stack.compose.logs_receiver]
+}
+
 /********************************************
  * Traces
  ********************************************/

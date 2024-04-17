@@ -36,6 +36,24 @@ declare "component_node_exporter" {
 		sysfs_path     = "/rootfs/sys"
 		rootfs_path    = "/rootfs"
 		udev_data_path = "/rootfs/run/udev/data"
+
+	  enable_collectors = [
+    "processes",
+    "perf",
+    "mountstats",
+    "devstat",
+    "sysctl",
+    "systemd",
+  ]
+  sysctl {
+    include = [
+	"kernel.threads-max",
+    "fs.file-nr:total,current,max",
+	]
+
+  }
+
+  include_exporter_metrics = true
 	}
 
 	/***************************************************************
@@ -78,11 +96,11 @@ declare "component_node_exporter" {
 		forward_to = argument.forward_to.value
 
 		// keep only metrics that match the keep_metrics regex
-		rule {
-			source_labels = ["__name__"]
-			regex         = argument.keep_metrics.value
-			action        = "keep"
-		}
+		//rule {
+		//	source_labels = ["__name__"]
+		//	regex         = argument.keep_metrics.value
+		//	action        = "keep"
+		//}
 
 		// Drop metrics for certain file systems
 		rule {

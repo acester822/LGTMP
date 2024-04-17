@@ -1,0 +1,72 @@
+
+
+
+/************************************************
+*! Integrations Component: component_traefik_metrics_scrape
+*************************************************/
+
+declare "component_traefik_metrics" {
+
+	/********************************************
+	*! ARGUMENTS
+	********************************************/
+	argument "forward_to" {
+		comment = "Must be a list(MetricssReceiver) where collected metrics should be forwarded to"
+	}
+
+	argument "scrape_interval" {
+		comment  = "How often to scrape metrics from the targets (default: 60s)"
+		optional = true
+		default  = "15s"
+	}
+
+	argument "scrape_timeout" {
+		comment  = "How long before a scrape times out (default: 10s)"
+		optional = true
+		default  = "10s"
+	}
+
+	/********************************************
+	*! Prometheus Scrape Integrations Targets
+	********************************************/
+
+    prometheus.scrape "traefik" {
+	    targets = [{
+		    __address__ = "192.168.68.86:8899",
+	    }]
+        enable_protobuf_negotiation = true
+		scrape_classic_histograms   = true
+
+		scrape_interval = argument.scrape_interval.value
+		scrape_timeout  = argument.scrape_timeout.value
+
+		clustering {
+			enabled = true
+		}
+
+		forward_to = [prometheus.relabel.component_traefik_metrics.receiver]
+	}
+
+
+	/********************************************
+	*! Prometheus Metric Relabelings (post-scrape)
+	********************************************/
+	prometheus.relabel "component_traefik_metrics" {
+		forward_to = argument.forward_to.value
+
+		// keep only metrics that match the keep_metrics regex
+		//rule {
+			//source_labels = ["__name__"]
+			//regex         = argument.keep_metrics.value
+			//action        = "keep"
+		//}
+
+		// Drop metrics for certain file systems
+		//rule {
+			//source_labels = ["__name__", "fstype"]
+			//separator     = "@"
+			//regex         = "node_filesystem.*@(tempfs)"
+			//action        = "drop"
+		//}
+	}
+}
