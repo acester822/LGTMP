@@ -37,7 +37,7 @@ declare "integrations_scrape" {
 	/*****************************************************************
 	* cAdvisor Integrations
 	*****************************************************************/
-	integrate.component_cadvisor "default" {
+	integrate.integrations_cadvisor "default" {
 		forward_to = argument.forward_to.value
 
 		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
@@ -47,7 +47,7 @@ declare "integrations_scrape" {
 	/*****************************************************************
 	* Node Exporter Integrations
 	*****************************************************************/
-	integrate.component_node_exporter "default" {
+	integrate.integrations_node_exporter "default" {
 		forward_to = argument.forward_to.value
 
 		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
@@ -57,15 +57,15 @@ declare "integrations_scrape" {
 	/*****************************************************************
 	* Memcached Integrations
 	*****************************************************************/
-	integrate.component_memcached "primary" {
+	integrate.integrations_memcached "primary" {
 		forward_to = argument.forward_to.value
+
+		instance_name     = "primary"
+		memcached_address = "memcached:11211"
+		memcached_timeout = "5s"
 
 		scrape_interval = coalesce(argument.scrape_interval.value, "60s")
 		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
-
-		memcached_address  = "memcached:11211"
-		memcached_timeout  = "5s"
-		memcached_instance = "primary"
 	}
 
 }

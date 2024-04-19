@@ -47,6 +47,14 @@ x-healthcheck: &status-healthcheck
 configs:
   alloy_config_file:
     file: ./config/alloy/master.alloy
+  loki_config_file:
+    file: ./config/loki/loki.yaml
+  tempo_config_file:
+    file: ./config/tempo/tempo.yaml
+  mimir_config_file:
+    file: ./config/mimir/mimir.yaml
+  pyroscope_config_file:
+    file: ./config/pyroscope/pyro.yaml
 
 services:
 
@@ -120,10 +128,13 @@ services:
       profiles.grafana.com/service_name: loki
     depends_on: { minio: { condition: service_healthy } }
     image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.0.0}
+    configs:
+      - source: loki_config_file
+        target: /etc/loki/config.yaml
     volumes:
-      - ./config/loki:/etc/loki
+      - ./config/loki:/etc/loki/configs
     command:
-      - -config.file=/etc/loki/loki.yaml
+      - -config.file=/etc/loki/config.yaml
       - -target=all
       - -config.expand-env=true
     environment:
@@ -147,10 +158,13 @@ services:
       profiles.grafana.com/service_name: tempo
     depends_on: { minio: { condition: service_healthy }, mimir: { condition: service_healthy } }
     image: ${TEMPO_IMAGE:-docker.io/grafana/tempo:2.4.1}
+    configs:
+      - source: tempo_config_file
+        target: /etc/tempo/config.yaml
     volumes:
-      - ./config/tempo:/etc/tempo
+      - ./config/tempo:/etc/tempo/configs
     command:
-      - -config.file=/etc/tempo/tempo.yaml
+      - -config.file=/etc/tempo/config.yaml
       - -target=all
       - -config.expand-env=true
     environment:
@@ -171,10 +185,13 @@ services:
       profiles.grafana.com/service_name: mimir
     depends_on: { minio: { condition: service_healthy } }
     image: ${MIMIR_IMAGE:-docker.io/grafana/mimir:2.12.0}
+    configs:
+      - source: mimir_config_file
+        target: /etc/mimir/config.yaml
     volumes:
-      - ./config/mimir:/etc/mimir
+      - ./config/mimir:/etc/mimir/configs
     command:
-      - -config.file=/etc/mimir/mimir.yaml
+      - -config.file=/etc/mimir/config.yaml
       - -target=all
       - -config.expand-env=true
       - -ruler.max-rules-per-rule-group=50
@@ -198,11 +215,14 @@ services:
       profiles.grafana.com/service_name: pyroscope
     depends_on: { minio: { condition: service_healthy } }
     image: ${PYROSCOPE_IMAGE:-docker.io/grafana/pyroscope:1.5.0}
+    configs:
+      - source: pyroscope_config_file
+        target: /etc/pyroscope/config.yaml
     volumes:
-      - ./config/pyroscope:/etc/pyroscope
+      - ./config/pyroscope:/etc/pyroscope/configs
       - pyroscope_data:/data
     command:
-      - -config.file=/etc/pyroscope/pyro.yaml
+      - -config.file=/etc/pyroscope/config.yaml
       - -config.expand-env=true
     environment:
       <<: *jaeger-environment
@@ -272,22 +292,22 @@ services:
       - --config=/etc/grafana-config/grafana.ini
     volumes:
       - ./config/grafana/grafana.ini:/etc/grafana-config/grafana.ini
-      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+      - dashboards_data:/var/lib/grafana/dashboards
       - ./config/grafana/provisioning:/etc/grafana/provisioning
       - ./config/grafana/provisioning/datasources/redis.yaml:/etc/grafana/provisioning/datasources/redis.yaml
       - ./config/grafana/provisioning/plugins/grafana-lokiexplore-app.yaml:/etc/grafana/provisioning/plugins/grafana-lokiexplore-app.yaml
       - ./config/grafana/provisioning/plugins/grafana-oncall-app.yaml:/etc/grafana/provisioning/plugins/grafana-oncall-app.yaml
       - ./config/grafana/provisioning/plugins/redis-app.yaml:/etc/grafana/provisioning/plugins/redis-app.yaml
-      - ./monitoring-mixins/alloy-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/alloy-mixin
-      - ./monitoring-mixins/memcached-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/memcached-mixin
-      - ./monitoring-mixins/go-runtime-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/go-runtime-mixin
-      - ./monitoring-mixins/github-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/github-mixin
-      - ./monitoring-mixins/mimir-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/mimir-mixin
-      - ./monitoring-mixins/pyroscope-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/pyroscope-mixin
-      - ./monitoring-mixins/loki-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/loki-mixin
-      - ./monitoring-mixins/tempo-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/tempo-mixin
+      - ./config/grafana/provisioning/dashboards/:/var/lib/grafana/dashboards/
+      ##- ./monitoring-mixins/alloy-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/alloy-mixin
+      ##- ./monitoring-mixins/memcached-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/memcached-mixin
+      ##- ./monitoring-mixins/go-runtime-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/go-runtime-mixin
+      ##- ./monitoring-mixins/github-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/github-mixin
+      ##- ./monitoring-mixins/mimir-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/mimir-mixin
+      ##- ./monitoring-mixins/pyroscope-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/pyroscope-mixin
+      ##- ./monitoring-mixins/loki-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/loki-mixin
+      ##- ./monitoring-mixins/tempo-mixin/deploy/dashboards_out:/var/lib/grafana/dashboards/tempo-mixin
     environment:
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/github-mixin/api-usage.json
       GF_FEATURE_TOGGLES_ENABLE: traceqlEditor tracesEmbeddedFlameGraph traceqlSearch correlations metricsSummary traceToMetrics traceToProfiles accessControlOnCall
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-lokiexplore-app grafana-oncall-app
       GF_SMTP_ENABLED: true
@@ -409,3 +429,4 @@ volumes:
   inbucket_data:
   oncall_data:
   redis_data:
+  dashboards_data:

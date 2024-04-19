@@ -1,14 +1,19 @@
 /*
-Module Components: component_node_exporter
+Module Components: integrations_node_exporter
 */
 
-declare "component_node_exporter" {
+declare "integrations_node_exporter" {
 
 	/*****************************************************************
 	* ARGUMENTS
 	*****************************************************************/
 	argument "forward_to" {
 		comment = "Must be a list(MetricssReceiver) where collected metrics should be forwarded to"
+	}
+
+	argument "instance_name" {
+		comment  = "instance of the Node"
+		optional = true
 	}
 
 	argument "keep_metrics" {
@@ -19,7 +24,7 @@ declare "component_node_exporter" {
 	argument "scrape_interval" {
 		comment  = "How often to scrape metrics from the targets (default: 60s)"
 		optional = true
-		default  = "60s"
+		default  = "30s"
 	}
 
 	argument "scrape_timeout" {
@@ -31,7 +36,7 @@ declare "component_node_exporter" {
 	/***************************************************************
 	* Integrations cAdvisor
 	****************************************************************/
-	prometheus.exporter.unix "component_node_exporter" {
+	prometheus.exporter.unix "integrations_node_exporter" {
 		procfs_path    = "/rootfs/proc"
 		sysfs_path     = "/rootfs/sys"
 		rootfs_path    = "/rootfs"
@@ -59,21 +64,26 @@ declare "component_node_exporter" {
 	/***************************************************************
 	* Discovery Relabelings (pre-scrape)
 	****************************************************************/
-	discovery.relabel "component_node_exporter" {
-		targets = prometheus.exporter.unix.component_node_exporter.targets
+	discovery.relabel "integrations_node_exporter" {
+		targets = prometheus.exporter.unix.integrations_node_exporter.targets
 
 		rule {
 			target_label = "job"
-			replacement  = "integrations/node-exporter"
+			replacement  = "integrations/compose/node-exporter"
+		}
+
+		rule {
+			target_label = "instance"
+			replacement  = coalesce(argument.instance_name.value, constants.hostname)
 		}
 	}
 
 	/***************************************************************
 	* Prometheus Scrape Integrations Targets
 	****************************************************************/
-	prometheus.scrape "component_node_exporter" {
+	prometheus.scrape "integrations_node_exporter" {
 		targets = concat(
-			discovery.relabel.component_node_exporter.output,
+			discovery.relabel.integrations_node_exporter.output,
 		)
 
 		enable_protobuf_negotiation = true
@@ -86,21 +96,21 @@ declare "component_node_exporter" {
 			enabled = true
 		}
 
-		forward_to = [prometheus.relabel.component_node_exporter.receiver]
+		forward_to = [prometheus.relabel.integrations_node_exporter.receiver]
 	}
 
 	/***************************************************************
 	* Prometheus Metric Relabelings (post-scrape)
 	****************************************************************/
-	prometheus.relabel "component_node_exporter" {
+	prometheus.relabel "integrations_node_exporter" {
 		forward_to = argument.forward_to.value
 
 		// keep only metrics that match the keep_metrics regex
-		//rule {
-		//	source_labels = ["__name__"]
-		//	regex         = argument.keep_metrics.value
-		//	action        = "keep"
-		//}
+		rule {
+			source_labels = ["__name__"]
+			regex         = argument.keep_metrics.value
+			action        = "keep"
+		}
 
 		// Drop metrics for certain file systems
 		rule {
