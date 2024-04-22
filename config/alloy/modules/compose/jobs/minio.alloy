@@ -1,4 +1,6 @@
+//*Location: LGTMP Stack
 /*
+Location: LGTMP Stack
 Module Components: component_minio
 Description: Scrapes Minio Metrics(v3)
 

@@ -1,3 +1,4 @@
+//*Location: LGTMP Stack
 /*
 Module Components: integrations_scrape
 Description: Integrations Module Components Scrape
@@ -37,7 +38,7 @@ declare "integrations_scrape" {
 	/*****************************************************************
 	* cAdvisor Integrations
 	*****************************************************************/
-	integrate.integrations_cadvisor "default" {
+	integrate.component_cadvisor "default" {
 		forward_to = argument.forward_to.value
 
 		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
@@ -47,7 +48,7 @@ declare "integrations_scrape" {
 	/*****************************************************************
 	* Node Exporter Integrations
 	*****************************************************************/
-	integrate.integrations_node_exporter "default" {
+	integrate.component_node_exporter "default" {
 		forward_to = argument.forward_to.value
 
 		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
@@ -57,15 +58,14 @@ declare "integrations_scrape" {
 	/*****************************************************************
 	* Memcached Integrations
 	*****************************************************************/
-	integrate.integrations_memcached "primary" {
+	integrate.component_memcached "primary" {
 		forward_to = argument.forward_to.value
 
-		instance_name     = "primary"
 		memcached_address = "memcached:11211"
 		memcached_timeout = "5s"
 
+		instance_name   = "primary"
 		scrape_interval = coalesce(argument.scrape_interval.value, "60s")
 		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
 	}
-
 }
