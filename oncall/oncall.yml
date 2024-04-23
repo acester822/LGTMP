@@ -1,0 +1,70 @@
+services:
+
+  engine:
+    # https://github.com/qclaogui/codelab-monitoring/blob/main/alloy-modules/compose/README.md
+    labels:
+      metrics.grafana.com/scrape: true
+      # metrics are exposed on path /metrics/ and not on /metrics
+      # Related Issues-3597: https://github.com/grafana/oncall/issues/3597
+      metrics.grafana.com/path: "/metrics/"
+    depends_on:
+      oncall_db_migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    image: &oncallImage grafana/oncall:v1.4.0
+    restart: always
+    ports:
+      # - "8080"
+      - "8081:8080"
+    command: sh -c "uwsgi --ini uwsgi.ini"
+    environment:
+      <<: *oncall-network
+    volumes:
+      - oncall_data:/var/lib/oncall
+
+  celery:
+    labels:
+      metrics.grafana.com/scrape: false
+    depends_on:
+      oncall_db_migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    image: *oncallImage
+    restart: always
+    command: sh -c "./celery_with_exporter.sh"
+    environment:
+      <<: *oncall-network
+    volumes:
+      - oncall_data:/var/lib/oncall
+
+  oncall_db_migration:
+    labels:
+      metrics.grafana.com/scrape: false
+    depends_on:
+      redis:
+        condition: service_healthy
+    image: *oncallImage
+    command: python manage.py migrate --noinput
+    environment:
+      <<: *oncall-network
+    volumes:
+      - oncall_data:/var/lib/oncall
+
+  redis:
+    labels:
+      metrics.grafana.com/scrape: false
+    image: redis:7.0.5
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+volumes:
+  oncall_data:
+  redis_data:
