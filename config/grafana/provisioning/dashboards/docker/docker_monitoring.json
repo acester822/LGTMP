@@ -26,7 +26,7 @@
     "fiscalYearStartMonth": 0,
     "gnetId": 15120,
     "graphTooltip": 1,
-    "id": 50,
+    "id": 60,
     "links": [],
     "liveNow": false,
     "panels": [
@@ -2078,8 +2078,7 @@
               "mode": "absolute",
               "steps": [
                 {
-                  "color": "green",
-                  "value": null
+                  "color": "green"
                 },
                 {
                   "color": "red",
@@ -2195,8 +2194,7 @@
               "mode": "absolute",
               "steps": [
                 {
-                  "color": "green",
-                  "value": null
+                  "color": "green"
                 },
                 {
                   "color": "red",
@@ -2312,8 +2310,7 @@
               "mode": "absolute",
               "steps": [
                 {
-                  "color": "green",
-                  "value": null
+                  "color": "green"
                 },
                 {
                   "color": "red",
@@ -2414,8 +2411,7 @@
               "mode": "absolute",
               "steps": [
                 {
-                  "color": "green",
-                  "value": null
+                  "color": "green"
                 },
                 {
                   "color": "red",
@@ -2518,8 +2514,7 @@
               "mode": "absolute",
               "steps": [
                 {
-                  "color": "green",
-                  "value": null
+                  "color": "green"
                 },
                 {
                   "color": "red",
@@ -2621,8 +2616,7 @@
               "mode": "absolute",
               "steps": [
                 {
-                  "color": "green",
-                  "value": null
+                  "color": "green"
                 },
                 {
                   "color": "red",
@@ -2694,8 +2688,7 @@
               "mode": "absolute",
               "steps": [
                 {
-                  "color": "green",
-                  "value": null
+                  "color": "green"
                 },
                 {
                   "color": "red",
@@ -2822,7 +2815,7 @@
         "type": "table"
       }
     ],
-    "refresh": "auto",
+    "refresh": "5s",
     "schemaVersion": 39,
     "tags": [],
     "templating": {
@@ -2860,6 +2853,6 @@
     "timezone": "browser",
     "title": "Docker Monitoring",
     "uid": "codelabmonitoring",
-    "version": 4,
+    "version": 2,
     "weekStart": ""
   }
