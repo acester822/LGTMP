@@ -1,6 +1,6 @@
 logging {
 	level  = coalesce(env("ALLOY_LOG_LEVEL"), "info")
-	format = "logfmt"
+	format = "json"
 }
 
 /********************************************
