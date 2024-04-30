@@ -8,7 +8,7 @@ server:
   http_listen_port: 3100
   grpc_listen_port: 9095
   log_level: info
-  log_format: json
+  log_format: logfmt
 
 common:
   compactor_address: http://loki:3100

@@ -35,9 +35,21 @@ declare "keep_labels" {
 			"team",
 			"workload",
 			"source",
+			"log_type",
+			"levelz",
+			"msg",
+			"message",
+			"error",
+			"err",
+			"logger",
+			"extracted_log_level",
+			"extracted_service_name",
+			"extracted_message",
 		]
 	}
-
+		/*      extracted_log_level  	= "",
+				extracted_service_name 	= "",
+				extracted_message 		= "",  */
 	/*****************************************************************
 	* LOKI PROCESS
 	*****************************************************************/

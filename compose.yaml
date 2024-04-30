@@ -59,6 +59,8 @@ configs:
 services:
 
   alloy:
+    labels:
+      logs.grafana.com/log-format: logfmt
     depends_on: { gateway: { condition: service_healthy } }
     image: ${ALLOY_IMAGE:-docker.io/grafana/alloy:v1.0.0}
     configs:
@@ -128,6 +130,7 @@ services:
       metrics.grafana.com/job: "monitoring-system/loki-single-binary"
       logs.grafana.com/job: "monitoring-system/loki-single-binary"
       profiles.grafana.com/service_name: loki
+      logs.grafana.com/log-format: logfmt
     depends_on: { minio: { condition: service_healthy } }
     image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.0.0}
     configs:

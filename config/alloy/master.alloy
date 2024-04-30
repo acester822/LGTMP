@@ -3,9 +3,9 @@ logging {
 	format = "logfmt"
 }
 
-/********************************************
- * Grafana LGTMP Stack Receiver Provider
- ********************************************/
+//********************************************
+// * Grafana LGTMP Stack Receiver Provider
+// ********************************************/
  //import.git "provider" {
 	 //repository     = "https://github.com/qclaogui/codelab-monitoring.git"
 	 //revision       = "main"
