@@ -1,0 +1,115 @@
+receivers:
+
+  filelog:
+    include:
+    - /var/lib/docker/containers/*/*-json.log
+    encoding: utf-8
+    fingerprint_size: 1kb
+    force_flush_period: "0"
+    include_file_name: false
+    include_file_path: true
+    max_concurrent_files: 1024
+    poll_interval: 200ms
+    start_at: beginning
+
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  docker_stats:
+    metrics:
+      container.cpu.usage.total:
+        enabled: true
+      container.cpu.throttling_data.periods:
+        enabled: true
+      container.cpu.throttling_data.throttled_periods:
+        enabled: true
+      # `container.cpu.percent` is deprecated in favor of `container.cpu.utilization` in opentelemetry-collector-contrib v0.79.0
+      container.cpu.utilization:
+        enabled: true
+      container.memory.usage.limit:
+        enabled: true
+      container.memory.usage.total:
+        enabled: true
+      container.memory.percent:
+        enabled: true
+      container.blockio.io_service_bytes_recursive:
+        enabled: true
+      container.network.io.usage.rx_bytes:
+        enabled: true
+      container.network.io.usage.tx_bytes:
+        enabled: true
+      container.network.io.usage.rx_dropped:
+        enabled: true
+      container.network.io.usage.tx_dropped:
+        enabled: true
+      container.network.io.usage.rx_errors:
+        enabled: true
+      container.network.io.usage.tx_errors:
+        enabled: true
+      container.network.io.usage.rx_packets:
+        enabled: true
+      container.network.io.usage.tx_packets:
+        enabled: true
+      container.pids.count:
+        enabled: true
+
+processors:
+
+  # resource and resource-detection processors allow decorating the metrics with host attributes
+  resource:
+    attributes:
+      - key: host.id
+        from_attribute: host.name
+        action: insert
+
+  resourcedetection:
+    detectors: ["env", "system"]
+
+  resourcedetection/cloud:
+    detectors: ["gcp", "ec2", "azure"]
+    timeout: 2s
+    override: false
+
+exporters:
+  otlp:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  prometheusremotewrite:
+    endpoint:  http://prometheus:9090/api/v1/write
+    tls:
+      insecure: true
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+  debug:
+    verbosity: detailed
+    sampling_initial: 2
+    sampling_thereafter: 200
+
+service:
+
+  pipelines:
+    metrics:
+      receivers: [docker_stats]
+      processors:
+        - resourcedetection
+        - resourcedetection/cloud
+        - resource
+      exporters: [otlp]
+    logs:
+      receivers: [filelog]
+      exporters: [loki]
+    traces:
+      receivers: [otlp]
+      exporters: [otlp]
+  telemetry:
+    metrics:
+      address: 127.0.0.1:8888
+      level: detailed
+    logs:
+      level: debug
+      encoding: json

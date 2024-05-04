@@ -358,6 +358,27 @@ services:
       - --memcached.address=memcached:11211
       - --web.listen-address=0.0.0.0:9150
 
+  opentelemetry-collector:
+    container_name: opentelemetry-collector
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - ./config/otel/otel-config.yaml:/etc/otel-config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      #- /:/rootfs:ro
+      #- /sys:/sys:ro
+      #- /var/lib/docker:/var/lib/docker:ro
+      #- /etc/passwd:/etc/passwd:ro
+      #- /etc/group:/etc/group:ro
+      #- /etc/localtime:/etc/localtime:ro
+      #- /proc:/proc
+      #- /etc/os-release:/etc/os-release:ro
+      #- /var/log:/var/log:ro
+      #- /run/dbus:/run/dbus:ro
+      #- /run/udev/data:/run/udev/data:ro
+      #- /dev/kmsg:/dev/kmsg:ro
+    command:
+      - "--config=/etc/otel-config.yaml"
+
 volumes:
   pyroscope_data:
   minio_data:
