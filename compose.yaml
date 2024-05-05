@@ -107,6 +107,7 @@ services:
   gateway:
     labels:
       metrics.grafana.com/scrape: false
+      logs.grafana.com/log-format: clf
     depends_on: { loki: { condition: service_healthy }, tempo: { condition: service_healthy }, mimir: { condition: service_healthy }, pyroscope: { condition: service_healthy } }
     image: ${NGINX_IMAGE:-docker.io/nginxinc/nginx-unprivileged:1.25-alpine}
     restart: always
@@ -188,6 +189,7 @@ services:
       <<: *profiles-labels
       metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: mimir
+      logs.grafana.com/log-format: logfmt
     depends_on: { minio: { condition: service_healthy } }
     image: ${MIMIR_IMAGE:-docker.io/grafana/mimir:2.12.0}
     configs:
@@ -357,27 +359,6 @@ services:
     command:
       - --memcached.address=memcached:11211
       - --web.listen-address=0.0.0.0:9150
-
-  opentelemetry-collector:
-    container_name: opentelemetry-collector
-    image: otel/opentelemetry-collector-contrib:latest
-    volumes:
-      - ./config/otel/otel-config.yaml:/etc/otel-config.yaml
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      #- /:/rootfs:ro
-      #- /sys:/sys:ro
-      #- /var/lib/docker:/var/lib/docker:ro
-      #- /etc/passwd:/etc/passwd:ro
-      #- /etc/group:/etc/group:ro
-      #- /etc/localtime:/etc/localtime:ro
-      #- /proc:/proc
-      #- /etc/os-release:/etc/os-release:ro
-      #- /var/log:/var/log:ro
-      #- /run/dbus:/run/dbus:ro
-      #- /run/udev/data:/run/udev/data:ro
-      #- /dev/kmsg:/dev/kmsg:ro
-    command:
-      - "--config=/etc/otel-config.yaml"
 
 volumes:
   pyroscope_data:

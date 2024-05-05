@@ -209,7 +209,7 @@ declare "labels_scrape" {
 	loki.process "parse" {																															//* Parse the log at container runtime:
 		forward_to = argument.forward_to.value
 
-		stage.match {																																//* logs.grafana.com/log-format: test
+		stage.match { //*		logs.grafana.com/log-format: arr																															//* logs.grafana.com/log-format: test
 			pipeline_name = "pipeline for annotation || logs.grafana.com/log-format: arr"															//* sets pipeline and what "format" it is looking for
 			selector = "{log_type=\"\", logs_grafana_com_log_format=~\"(?i).*(arr).*\"} |~ \"^(\\\\[[^]]+\\\\])\\\\s+(\\\\w+):\\\\s+(.*)$\""		//! This must be escaped x4 aka \s+ is \\\\s+
 
@@ -220,26 +220,22 @@ declare "labels_scrape" {
 			}
 
 			stage.regex {
-				expression = `\[(?P<extracted_log_level>.*?)\] (?P<extracted_service_name>.*?): (?P<extracted_message>.*)`							//* Must either already have a label in the log, or use a regex to create them such as this
+				expression = `\[(?P<level>.*?)\] (?P<extracted_service_name>.*?): (?P<msg>.*)`							//* Must either already have a label in the log, or use a regex to create them such as this
 			}
-
 
 			stage.labels {																															//* set the extracted strings as labels
 				values = {																															//! do not forget to add these to the keep-labels.alloy
-					extracted_log_level  	= "",
+					level  					= "",
 					extracted_service_name 	= "",
-					extracted_message 		= "",
+					msg 					= "",
 				}
 			}
-
-
-
 		}
 
-		stage.match { // *!logs.grafana.com/log-format: clf
-			pipeline_name = "pipeline for annotation || logs.grafana.com/log-format: clf"
+		stage.match { //*		logs.grafana.com/log-format: clf
+			pipeline_name = "pipeline for annotation || logs.agent.grafana.com/log-format: clf"
 			// unescaped regex: \S+\s+\S+\s+\S+\s+\[\S+\s+\S+\]\s+"[^"]+"\s+\d+\s+\d+
-			selector = "{log_type=\"\", logs_grafana_com_log_format=~\"(?i).*((apache|nginx|common-?log|clf)).*\"} |~ \"^\\\\S+\\\\s+\\\\S+\\\\s+\\\\S+\\\\s+\\\\[\\\\S+\\\\s+\\\\S+\\\\]\\\\s+\\\"[^\\\"]+\\\"\\\\s+\\\\d+\\\\s+\\\\d+$\""
+			selector = "{log_type=\"\", logs_agent_grafana_com_log_format=~\"(?i).*((apache|nginx|common-?log|clf)).*\"} |~ \"^\\\\S+\\\\s+\\\\S+\\\\s+\\\\S+\\\\s+\\\\[\\\\S+\\\\s+\\\\S+\\\\]\\\\s+\\\"[^\\\"]+\\\"\\\\s+\\\\d+\\\\s+\\\\d+$\""
 
 			// clf doesn't have a log level, set default to info, set the log_type
 			stage.static_labels {
@@ -265,7 +261,7 @@ declare "labels_scrape" {
 
 			// check to see if the string failed is found in the log line, if so set the level to error
 			stage.match {
-				selector = "{logs_grafana_com_log_format=~\"(?i)(apache|nginx|common-log|clf)\"} |~ \" (failed|error) \""
+				selector = "{logs_agent_grafana_com_log_format=~\"(?i)(apache|nginx|common-log|clf)\"} |~ \" (failed|error) \""
 
 				stage.static_labels {
 					values = {
@@ -274,12 +270,11 @@ declare "labels_scrape" {
 				}
 			}
 
-
 			// check logs.agent.grafana.com/scrub-timestamp annotation, if true remove the timestamp from the log line
 			// this can reduce the overall # of bytes sent and stored in Loki
 			stage.match {
-				selector      = "{logs_grafana_com_scrub_timestamp=\"true\"}"
-				pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-timestamp: true"
+				selector      = "{logs_agent_grafana_com_scrub_timestamp=\"true\"}"
+				pipeline_name = "pipeline for annotation || logs.agent.grafana.com/scrub-timestamp: true"
 
 				// remove timestamp from the log line
 				// unescaped regex: (\[([^\]]+)\])
@@ -290,7 +285,7 @@ declare "labels_scrape" {
 			}
 		}
 
-		stage.match { // *! logs.grafana.com/log-format: logfmt
+		stage.match { //*		logs.grafana.com/log-format: logfmt
 			pipeline_name = "pipeline for annotation || logs.grafana.com/log-format: logfmt"
 			// unescaped regex: (\w+=("[^"]*"|\S+))(\s+(\w+=("[^"]*"|\S+)))*\s*
 			selector = "{log_type=\"\", logs_grafana_com_log_format=~\"(?i).*(logfmt).*\"} |~ \"(\\\\w+=(\\\"[^\\\"]*\\\"|\\\\S+))(\\\\s+(\\\\w+=(\\\"[^\\\"]*\\\"|\\\\S+)))*\\\\s*\""
@@ -315,17 +310,154 @@ declare "labels_scrape" {
 				}
 			}
 
+			stage.match {
+				selector      = "{logs_agent_grafana_com_scrub_timestamp=\"true\"}"
+				pipeline_name = "pipeline for annotation || logs.agent.grafana.com/scrub-timestamp: true"
+
+				// remove timestamp from the log line
+
+				// unescaped regex: ((ts?|timestamp)=\d{4}-\d{2}-\d{2}(T|\s+)\d{2}:\d{2}:\d{2}(\.\d+)?(Z|(\+|-)\d+)?\s+)
+				stage.replace {
+					expression = "((ts?|timestamp)=[0-9]{4}-[0-9]{2}-[0-9]{2}(T|\\s+)[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|(\\+|-)[0-9]+)?\\s+)"
+					replace    = ""
+				}
+			}
+
 			// check logs.agent.grafana.com/scrub-level annotation, if true remove the level from the log line (it is still a label)
 			// this can reduce the overall # of bytes sent and stored in Loki
 			stage.match {
-				selector      = "{logs_grafana_com_scrub_level=~\"(?i)true\"}"
-				pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-level: true"
+				selector      = "{logs_agent_grafana_com_scrub_level=~\"(?i)true\"}"
+				pipeline_name = "pipeline for annotation || logs.agent.grafana.com/scrub-level: true"
 
 				// remove level from the log line
 				stage.replace {
 					// unescaped regex: (log)?(lvl|level)="?[^\s]+\s"?
 					expression = "(?i)((log)?(lvl|level)=\"?[^\\s]+\\s\"?)"
 					replace    = ""
+				}
+			}
+		}
+
+		stage.match { //*		logs.grafana.com/log-format: json
+			pipeline_name = "pipeline for annotation || logs.agent.grafana.com/log-format: json"
+			selector      = "{log_type=\"\", logs_agent_grafana_com_log_format=~\"(?i).*((generic-?)?json).*\"} |~ \"^\\\\s*\\\\{.+\\\\}\\\\s*$\""
+
+			// set the log_type
+			stage.static_labels {
+				values = {
+					log_type = "json",
+				}
+			}
+
+			// extract the level
+			stage.json {
+				expressions = {
+					level = "level || lvl || loglevel || LogLevel || log_level || logLevel || log_lvl || logLvl || levelname || levelName || LevelName",
+				}
+			}
+
+			// set the extracted level as a label
+			stage.labels {
+				values = {
+					level = "",
+				}
+			}
+
+			// check logs.agent.grafana.com/scrub-timestamp annotation, if true remove the timestamp from the log line
+			// this can reduce the overall # of bytes sent and stored in Loki
+			// remove timestamp from the log line, depending on the entry it can be "start_time" or "time"
+			stage.match {
+				selector      = "{logs_agent_grafana_com_scrub_timestamp=\"true\"}"
+				pipeline_name = "pipeline for annotation || logs.agent.grafana.com/scrub-timestamp: true"
+
+				// remove timestamp from the log line
+				// unescaped regex: (?i)("(timestamp|ts|logdate|time)"\s*:\s*"[^"]+",?)
+				stage.replace {
+					expression = "(?i)(\"(timestamp|ts|logdate|time)\"\\s*:\\s*\"[^\"]+\",?)"
+					replace    = ""
+				}
+			}
+
+			// check logs.agent.grafana.com/scrub-level annotation, if true remove the level from the log line (it is still a label)
+			// this can reduce the overall # of bytes sent and stored in Loki
+			stage.match {
+				selector      = "{logs_agent_grafana_com_scrub_level=~\"(?i)true\"}"
+				pipeline_name = "pipeline for annotation || logs.agent.grafana.com/scrub-level: true"
+
+				// remove level from the log line
+				stage.replace {
+					// unescaped regex: (?i)"(log)?(level|lvl)"\s*:\s*"[^"]+",?
+					expression = "(?i)(\"(log)?(level|lvl)\"\\s*:\\s*\"[^\"]+\",?)"
+					replace    = ""
+				}
+			}
+		}
+
+		stage.match { //*		logs.grafana.com/log-format: syslog
+			pipeline_name = "pipeline for annotation || logs.agent.grafana.com/log-format: syslog"
+			// unescaped regex: ^[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+\S+\[\d+\]:\s+.*$
+			selector = "{log_type=\"\", logs_agent_grafana_com_log_format=~\"(?i).*(syslog).*\"} |~ \"^[A-Za-z]{3}\\\\s+\\\\d{1,2}\\\\s+\\\\d{2}:\\\\d{2}:\\\\d{2}\\\\s+\\\\S+\\\\s+\\\\S+\\\\[\\\\d+\\\\]:\\\\s+.*$\""
+
+			stage.static_labels {
+				values = {
+					// set the log_type
+					log_type = "syslog",
+					level    = "info",
+				}
+			}
+
+			// check logs.agent.grafana.com/scrub-timestamp annotation, if true remove the timestamp from the log line
+			// this can reduce the overall # of bytes sent and stored in Loki
+			stage.match {
+				selector      = "{logs_agent_grafana_com_scrub_timestamp=\"true\"}"
+				pipeline_name = "pipeline for annotation || logs.agent.grafana.com/scrub-timestamp: true"
+
+				// remove timestamp from the log line
+				// unescaped regex: ^[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}
+				stage.replace {
+					expression = "(^[A-Za-z]{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})"
+					replace    = ""
+				}
+			}
+		}
+
+			stage.match {
+				selector = "{level=\"\"}"
+
+				// default level to unknown
+				stage.static_labels {
+					values = {
+						level = "unknown",
+					}
+				}
+			}
+
+			// if a log_type is not set, default it to unknown
+			stage.match {
+				selector = "{log_type=\"\"}"
+
+				// default level to unknown
+				stage.static_labels {
+					values = {
+						log_type = "unknown",
+					}
+				}
+			}
+
+
+		// if the level is still unknown, do one last attempt at detecting it based on common levels
+		stage.match {
+			selector = "{level=\"unknown\"}"
+
+			// unescaped regex: (?i)(?:"(?:level|loglevel|levelname|lvl|SeverityText)":\s*"|\s+(?:level|loglevel|lvl)="?|\s+\[?)(?P<level>(DEBUG?|INFO|WARN(ING)?|ERR(OR)?|CRITICAL|FATAL|NOTICE|TRACE))("|\s+|-|\s*\])
+			stage.regex {
+				expression = "(?i)(?:\"(?:level|loglevel|levelname|lvl|SeverityText)\":\\s*\"|\\s+(?:level|loglevel|lvl)=\"?|\\s+\\[?)(?P<level>(DEBUG?|INFO|WARN(ING)?|ERR(OR)?|CRITICAL|FATAL|NOTICE|TRACE))(\"|\\s+|-|\\s*\\])"
+			}
+
+			// set the extracted level to be a label
+			stage.labels {
+				values = {
+					level = "",
 				}
 			}
 		}
