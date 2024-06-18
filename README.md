@@ -1,13 +1,19 @@
 # Complete Grafana Monitoring Setup
 
 ### Alloy, Grafana, Mimir, Loki, Pyroscope, Tempo, Minio, NGinx
+![[Drawing 2024-04-21 13.29.08.excalidraw.png]]
 
 > **NOTE**:
-> As of 4/19/2024
+> As of 6/18/2024
+> 
+> This has progressed into its own unique beast. I have not seen an alloy before on github that can do all of the things this one can. 
 
 ## Done / System Setup
 
-- [x] Integrate new [Explore Logs](https://github.com/grafana/explore-logs) / [Grafana 11 Preview](https://grafana.com/docs/grafana/latest/whatsnew/whats-new-in-v11-0/)
+- [x] Windows Metrics and Logs
+- [x] Dashboard updates, most dashboards are fully functional now, this will depend on your variables and names of course ✅ 2024-06-18
+- [x] Identified how to get loki to parse logs properly. The only issue is they vary so greatly from app to app it requires custom regex, for example I now can parse arr logs (lidarr, radarr, etc). ✅ 2024-06-18
+- [x] Integrate new [Explore Logs](https://github.com/grafana/explore-logs) / [Grafana 11 Preview](https://grafana.com/docs/grafana/latest/whatsnew/whats-new-in-v11-0/) ✅ 2024-06-18
 - [x] Update collector to Alloy
 - [x] Alloy configured as a total system collector
   - [x] Docker Metrics (Alloy cAdvisor built in)
@@ -35,7 +41,13 @@
 - [ ] Add a Linux Node Exporter / Receiver
 - [ ] Much more, as I intend to make this an All In One that anyone could easily use
 
-One of the main reasons I never used grafana or the agent before, was because of heavy CPU usage, most always with Loki, this was due to container logs and the fact that Loki has no idea what to do if people, aka its users do not have their logs trimmed and proper. Loki will keep trying to reprocess the old logs, even if you have max age's set as it has to scan the files to see the age.......
+
+
+> [!NOTE]
+> For Windows Metrics, there are two different ways you can do it. If you use Windows Exporter, everything works perfect, logs and metrics. My issue was that Doing it that way does not allow you to limit the garbage metrics like Alloy can. Making the entire process start to finish as lean as possible is one of my main goals, so I then built another alloy config to use remotely on a windows machine that will pull only the metrics needed for the dashboards. The issue is even though they are both build exactly the same, for some reason random metrics are having a hard time showing up in grafana even though I can manually get them to work in promql. This tells me there is an issue in the dashboard variables somehow even though they are correct. 
+
+> [!NOTE]
+> One of the main reasons I never used grafana or the agent before, was because of heavy CPU usage, most always with Loki, this was due to container logs and the fact that Loki has no idea what to do if people, aka its users do not have their logs trimmed and proper. Loki will keep trying to reprocess the old logs, even if you have max age's set as it has to scan the files to see the age.......
 
 ## \#How-To-Install
 
@@ -45,7 +57,7 @@ One of the main reasons I never used grafana or the agent before, was because of
 git clone https://github.com/acester822/LGTMP.git
 ```
 
-1. Start it up
+2. Start it up
 
 ```shell
 docker compose up

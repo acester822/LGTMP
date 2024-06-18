@@ -1,0 +1,86 @@
+prometheus.remote_write "local" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+otelcol.exporter.otlp "local" {
+  client {
+    endpoint = "tempo:4317"
+  }
+}
+
+pyroscope.write "local" {
+  endpoint {
+    url = "http://pyroscope:4100"
+  }
+}
+
+prometheus.relabel "windows_add_job" {
+  rule {
+    target_label = "job"
+    replacement = "integrations/windows_exporter"
+  }
+  rule {
+    source_labels = ["instance"]
+    target_label  = "agent_hostname"
+  }
+  forward_to = [
+    prometheus.remote_write.local.receiver,
+  ]
+}
+
+prometheus.scrape "windows_node" {
+  targets = prometheus.exporter.windows.default.targets
+  forward_to = [
+    prometheus.relabel.windows_add_job.receiver,
+  ]
+}
+
+prometheus.exporter.windows "default" {
+}
+
+loki.relabel "windows_mapping" {
+  forward_to = [loki.write.local.receiver]
+
+  rule {
+    source_labels = ["computer"]
+    target_label  = "agent_hostname"
+  }
+}
+
+loki.process "parse_eventlog" {
+  forward_to = [
+    loki.relabel.windows_mapping.receiver,
+  ]
+  stage.json {
+    expressions = {
+      "source"  = "source",
+    }
+  }
+  stage.labels {
+    values = {
+      "source"  = "source",
+    }
+  }
+}
+
+loki.source.windowsevent "system" {
+  forward_to = [
+    loki.process.parse_eventlog.receiver,
+  ]
+  eventlog_name = "System"
+}
+loki.source.windowsevent "application" {
+  forward_to = [
+    loki.process.parse_eventlog.receiver,
+  ]
+  eventlog_name = "Application"
+}
+
