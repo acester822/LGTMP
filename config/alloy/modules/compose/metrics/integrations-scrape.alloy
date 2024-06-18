@@ -56,6 +56,16 @@ declare "integrations_scrape" {
 	}
 
 	/*****************************************************************
+	* Node Exporter Integrations
+	*****************************************************************/
+	integrate.component_process_exporter "default" {
+		forward_to = argument.forward_to.value
+
+		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
+		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
+	}
+
+	/*****************************************************************
 	* Memcached Integrations
 	*****************************************************************/
 	integrate.component_memcached "primary" {

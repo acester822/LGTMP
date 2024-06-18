@@ -39,18 +39,19 @@ declare "component_node_exporter" {
 	}
 
 	/***************************************************************
-	* Integrations cAdvisor
+	* Component - Node Exporter
 	****************************************************************/
 	// https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.unix/
 	prometheus.exporter.unix "integrations_node_exporter" {
-		procfs_path    = "/rootfs/proc"
-		sysfs_path     = "/rootfs/sys"
+		procfs_path    = "/proc"
+		sysfs_path     = "/sys"
 		rootfs_path    = "/rootfs"
-		udev_data_path = "/rootfs/run/udev/data"
+		udev_data_path = "/run/udev/data"
 
 	  enable_collectors = [
     "processes",
     "perf",
+	"pressure",
     "mountstats",
     "devstat",
     "sysctl",
@@ -112,18 +113,18 @@ declare "component_node_exporter" {
 		forward_to = argument.forward_to.value
 
 		// keep only metrics that match the keep_metrics regex
-		rule {
-			source_labels = ["__name__"]
-			regex         = argument.keep_metrics.value
-			action        = "keep"
-		}
+		//rule {
+		//	source_labels = ["__name__"]
+		//	regex         = argument.keep_metrics.value
+		//	action        = "keep"
+		//}
 
 		// Drop metrics for certain file systems
-		rule {
-			source_labels = ["__name__", "fstype"]
-			separator     = "@"
-			regex         = "node_filesystem.*@(tempfs)"
-			action        = "drop"
-		}
+		//rule {
+		//	source_labels = ["__name__", "fstype"]
+		//	separator     = "@"
+		//	regex         = "node_filesystem.*@(tempfs)"
+		//	action        = "drop"
+		//}
 	}
 }

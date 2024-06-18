@@ -1,49 +1,4 @@
 
-x-labels: &profiles-labels
-  profiles.grafana.com/cpu.scrape: true
-  profiles.grafana.com/memory.scrape: true
-  profiles.grafana.com/goroutine.scrape: true
-
-x-environment: &jaeger-environment
-  JAEGER_AGENT_HOST: alloy
-  JAEGER_AGENT_PORT: 6831
-  JAEGER_SAMPLER_TYPE: const
-  JAEGER_SAMPLER_PARAM: 1
-
- #x-network: &oncall-network
-  #SEND_ANONYMOUS_USAGE_STATS: ${SEND_ANONYMOUS_USAGE_STATS:-false}
-  #DATABASE_TYPE: sqlite3
-  #BROKER_TYPE: redis
-  #BASE_URL: ${BASE_URL:-http://engine:8080}
-  #SECRET_KEY: ${SECRET_KEY:-r4KriYc9sL6PJLaGdDRQL3PKqT6bufTx2uhj}
-  #FEATURE_PROMETHEUS_EXPORTER_ENABLED: ${FEATURE_PROMETHEUS_EXPORTER_ENABLED:-true}
-  #REDIS_URI: redis://redis:6379/0
-  #DJANGO_SETTINGS_MODULE: settings.hobby
-  #CELERY_WORKER_QUEUE: "default,critical,long,slack,telegram,webhook,retry,celery,grafana"
-  #CELERY_WORKER_CONCURRENCY: "1"
-  #CELERY_WORKER_MAX_TASKS_PER_CHILD: "100"
-  #CELERY_WORKER_SHUTDOWN_INTERVAL: "65m"
-  #CELERY_WORKER_BEAT_ENABLED: "True"
-  #GRAFANA_API_URL: ${GRAFANA_API_URL:-http://grafana:3000}
-  #EMAIL_HOST: inbucket
-  #EMAIL_PORT: 2500
-  #EMAIL_FROM_ADDRESS: oncall@grafana.localhost
-  #EMAIL_USE_TLS: false
-  #FEATURE_TELEGRAM_INTEGRATION_ENABLED: ${FEATURE_TELEGRAM_INTEGRATION_ENABLED:-false}
-  #FEATURE_SLACK_INTEGRATION_ENABLED: ${FEATURE_SLACK_INTEGRATION_ENABLED:-false}
-  #SLACK_CLIENT_OAUTH_ID: ${SLACK_CLIENT_OAUTH_ID:-}
-  #SLACK_CLIENT_OAUTH_SECRET: ${SLACK_CLIENT_OAUTH_SECRET:-}
-  #SLACK_INSTALL_RETURN_REDIRECT_HOST: ${SLACK_INSTALL_RETURN_REDIRECT_HOST:-}
-  #SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
-  #GRAFANA_CLOUD_NOTIFICATIONS_ENABLED: ${GRAFANA_CLOUD_NOTIFICATIONS_ENABLED:-false}
-  #GRAFANA_CLOUD_ONCALL_HEARTBEAT_ENABLED: ${GRAFANA_CLOUD_ONCALL_HEARTBEAT_ENABLED:-false}
-  #GRAFANA_CLOUD_ONCALL_TOKEN: ${GRAFANA_CLOUD_ONCALL_TOKEN:-}
-
-x-healthcheck: &status-healthcheck
-  interval: 3s
-  timeout: 1s
-  retries: 15
-
 configs:
   alloy_config_file:
     file: ./config/alloy/master.alloy
@@ -56,13 +11,35 @@ configs:
   pyroscope_config_file:
     file: ./config/pyroscope/pyro.yaml
 
+volumes:
+  pyroscope_data:
+  minio_data:
+  inbucket_data:
+  dashboards_data:
+
+x-labels: &profiles-labels
+  profiles.grafana.com/cpu.scrape: true
+  profiles.grafana.com/memory.scrape: true
+  profiles.grafana.com/goroutine.scrape: true
+
+x-environment: &jaeger-environment
+  JAEGER_AGENT_HOST: alloy
+  JAEGER_AGENT_PORT: 6831
+  JAEGER_SAMPLER_TYPE: const
+  JAEGER_SAMPLER_PARAM: 1
+
+x-healthcheck: &status-healthcheck
+  interval: 3s
+  timeout: 1s
+  retries: 15
+
 services:
 
   alloy:
     labels:
       logs.grafana.com/log-format: logfmt
     depends_on: { gateway: { condition: service_healthy } }
-    image: ${ALLOY_IMAGE:-docker.io/grafana/alloy:v1.0.0}
+    image: ${ALLOY_IMAGE:-docker.io/grafana/alloy:v1.1.1}
     configs:
       - source: alloy_config_file
         target: /etc/alloy/config.alloy
@@ -221,7 +198,7 @@ services:
       metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: pyroscope
     depends_on: { minio: { condition: service_healthy } }
-    image: ${PYROSCOPE_IMAGE:-docker.io/grafana/pyroscope:1.5.0}
+    image: ${PYROSCOPE_IMAGE:-docker.io/grafana/pyroscope:1.6.0}
     configs:
       - source: pyroscope_config_file
         target: /etc/pyroscope/config.yaml
@@ -359,9 +336,3 @@ services:
     command:
       - --memcached.address=memcached:11211
       - --web.listen-address=0.0.0.0:9150
-
-volumes:
-  pyroscope_data:
-  minio_data:
-  inbucket_data:
-  dashboards_data:

@@ -54,4 +54,35 @@ declare "jobs_scrape" {
 		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
 		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
 	}
+
+	/********************************************
+	* Prom Imports
+	********************************************/
+	/*jobs.component_prom_imports "integrations_prom_imports" {
+		forward_to = argument.forward_to.value
+
+		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
+		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
+	}
+
+	jobs.component_prom_imports2 "integrations_prom_imports2" {
+		forward_to = argument.forward_to.value
+
+		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
+		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
+	}
+
+	jobs.component_prom_imports3 "integrations_prom_imports3" {
+		forward_to = argument.forward_to.value
+
+		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
+		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
+	}
+
+	jobs.component_prom_imports4 "integrations_prom_imports4" {
+		forward_to = argument.forward_to.value
+
+		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
+		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
+	}*/
 }

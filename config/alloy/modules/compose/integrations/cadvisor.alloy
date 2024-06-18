@@ -12,7 +12,7 @@ declare "component_cadvisor" {
 		comment = "Must be a list(MetricssReceiver) where collected metrics should be forwarded to"
 	}
 
-	argument "job_label" {
+	argument "job" {
 		optional = true
 		default  = "integrations/docker/cadvisor"
 	}
@@ -76,7 +76,7 @@ declare "component_cadvisor" {
 
 		rule {
 			target_label = "job"
-			replacement  = argument.job_label.value
+			replacement  = argument.job.value
 		}
 
 		rule {
