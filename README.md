@@ -2,7 +2,7 @@
 
 ### Alloy, Grafana, Mimir, Loki, Pyroscope, Tempo, Minio, NGinx
 
-![Diagram showing the flow of metrics](LGTMP/flow.png)
+![Diagram showing the flow of metrics](flow.png)
 
 > **NOTE**:
 > As of 6/18/2024
