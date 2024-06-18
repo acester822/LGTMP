@@ -1,7 +1,8 @@
 # Complete Grafana Monitoring Setup
 
 ### Alloy, Grafana, Mimir, Loki, Pyroscope, Tempo, Minio, NGinx
-![[Drawing 2024-04-21 13.29.08.excalidraw.png]]
+
+![Diagram showing the flow of metrics](LGTMP/flow.png)
 
 > **NOTE**:
 > As of 6/18/2024
