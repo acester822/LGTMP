@@ -176,6 +176,7 @@
         }
       ],
       "title": "Metrics",
+      "transparent": true,
       "type": "stat"
     },
     {
@@ -246,6 +247,7 @@
       ],
       "timeFrom": "now-24h",
       "title": "Latest metrics received",
+      "transparent": true,
       "type": "stat"
     },
     {
@@ -305,6 +307,7 @@
       },
       "pluginVersion": "11.0.0-preview",
       "title": "Integration version",
+      "transparent": true,
       "type": "stat"
     },
     {
@@ -606,7 +609,7 @@
         ]
       },
       "gridPos": {
-        "h": 16,
+        "h": 7,
         "w": 24,
         "x": 0,
         "y": 2
@@ -769,6 +772,7 @@
           }
         }
       ],
+      "transparent": true,
       "type": "table"
     },
     {
@@ -780,12 +784,13 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-BlYlRd"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
-            "axisBorderShow": false,
+            "axisBorderShow": true,
             "axisCenteredZero": false,
             "axisColorMode": "text",
+            "axisGridShow": true,
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -841,30 +846,25 @@
         },
         "overrides": [
           {
+            "__systemRef": "hideSeriesFrom",
             "matcher": {
-              "id": "byName",
-              "options": "Mean"
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "Mean"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
             },
             "properties": [
               {
-                "id": "color",
+                "id": "custom.hideFrom",
                 "value": {
-                  "fixedColor": "light-purple",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 0
-              },
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "dash": [
-                    10,
-                    10
-                  ],
-                  "fill": "dash"
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
                 }
               }
             ]
@@ -875,15 +875,15 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 9
       },
       "id": 2,
       "options": {
         "legend": {
           "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
+            "lastNotNull",
+            "min",
+            "max"
           ],
           "displayMode": "table",
           "placement": "right",
@@ -902,8 +902,11 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "expr": "topk(25,100 - (avg without (mode,core) (rate(windows_cpu_time_total{mode=\"idle\", job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])*100)))",
+          "interval": "1m",
           "legendFormat": "{{instance}}",
+          "range": true,
           "refId": "A"
         },
         {
@@ -911,12 +914,17 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "avg(100 - (avg without (mode,core) (rate(windows_cpu_time_total{mode=\"idle\", job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])*100)))",
+          "hide": true,
+          "interval": "1m",
           "legendFormat": "Mean",
+          "range": true,
           "refId": "B"
         }
       ],
       "title": "CPU usage",
+      "transparent": true,
       "type": "timeseries"
     },
     {
@@ -931,9 +939,10 @@
             "mode": "continuous-BlYlRd"
           },
           "custom": {
-            "axisBorderShow": false,
+            "axisBorderShow": true,
             "axisCenteredZero": false,
             "axisColorMode": "text",
+            "axisGridShow": true,
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1023,15 +1032,15 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 16
       },
       "id": 3,
       "options": {
         "legend": {
           "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
+            "lastNotNull",
+            "min",
+            "max"
           ],
           "displayMode": "table",
           "placement": "right",
@@ -1050,8 +1059,11 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "topk(25,100 - windows_os_physical_memory_free_bytes{job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"} / windows_cs_physical_memory_bytes{job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"} * 100)",
+          "interval": "1m",
           "legendFormat": "{{instance}}",
+          "range": true,
           "refId": "A"
         },
         {
@@ -1059,12 +1071,17 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "expr": "avg(100 - windows_os_physical_memory_free_bytes{job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"} / windows_cs_physical_memory_bytes{job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"} * 100)",
+          "hide": true,
+          "interval": "1m",
           "legendFormat": "Mean",
+          "range": true,
           "refId": "B"
         }
       ],
       "title": "Memory usage",
+      "transparent": true,
       "type": "timeseries"
     },
     {
@@ -1079,9 +1096,10 @@
             "mode": "continuous-BlYlRd"
           },
           "custom": {
-            "axisBorderShow": false,
+            "axisBorderShow": true,
             "axisCenteredZero": false,
             "axisColorMode": "text",
+            "axisGridShow": true,
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1124,7 +1142,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1170,15 +1189,15 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 32
+        "y": 23
       },
       "id": 4,
       "options": {
         "legend": {
           "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
+            "lastNotNull",
+            "min",
+            "max"
           ],
           "displayMode": "table",
           "placement": "right",
@@ -1197,8 +1216,11 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "expr": "topk(25,(1-clamp_max(irate(windows_logical_disk_idle_seconds_total{volume!~\"HarddiskVolume.*\", job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]),1)) * 100)",
+          "interval": "1m",
           "legendFormat": "{{instance}}: {{volume}}",
+          "range": true,
           "refId": "A"
         },
         {
@@ -1206,12 +1228,17 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "avg((1-clamp_max(irate(windows_logical_disk_idle_seconds_total{volume!~\"HarddiskVolume.*\", job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]),1)) * 100)",
+          "hide": true,
+          "interval": "1m",
           "legendFormat": "Mean",
+          "range": true,
           "refId": "B"
         }
       ],
       "title": "Disk IO",
+      "transparent": true,
       "type": "timeseries"
     },
     {
@@ -1226,9 +1253,10 @@
             "mode": "continuous-BlYlRd"
           },
           "custom": {
-            "axisBorderShow": false,
+            "axisBorderShow": true,
             "axisCenteredZero": false,
             "axisColorMode": "text",
+            "axisGridShow": true,
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1271,7 +1299,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1317,15 +1346,15 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 32
+        "y": 23
       },
       "id": 5,
       "options": {
         "legend": {
           "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
+            "lastNotNull",
+            "min",
+            "max"
           ],
           "displayMode": "table",
           "placement": "right",
@@ -1344,8 +1373,11 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "topk(25,100 - windows_logical_disk_free_bytes{volume!~\"HarddiskVolume.*\", job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}/windows_logical_disk_size_bytes{volume!~\"HarddiskVolume.*\", job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}*100)",
+          "interval": "1m",
           "legendFormat": "{{instance}}: {{volume}}",
+          "range": true,
           "refId": "A"
         },
         {
@@ -1353,12 +1385,17 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "expr": "avg(100 - windows_logical_disk_free_bytes{volume!~\"HarddiskVolume.*\", job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}/windows_logical_disk_size_bytes{volume!~\"HarddiskVolume.*\", job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}*100)",
+          "hide": true,
+          "interval": "1m",
           "legendFormat": "Mean",
+          "range": true,
           "refId": "B"
         }
       ],
       "title": "Disk space usage",
+      "transparent": true,
       "type": "timeseries"
     },
     {
@@ -1373,9 +1410,10 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
+            "axisBorderShow": true,
             "axisCenteredZero": false,
             "axisColorMode": "text",
+            "axisGridShow": false,
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1411,7 +1449,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1427,7 +1466,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 30
       },
       "id": 6,
       "options": {
@@ -1450,8 +1489,11 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "expr": "(irate(windows_net_packets_outbound_errors_total{job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))>0.5",
+          "interval": "1m",
           "legendFormat": "{{instance}}: {{ nic }} transmitted",
+          "range": true,
           "refId": "A"
         },
         {
@@ -1459,8 +1501,11 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "(irate(windows_net_packets_received_errors_total{job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))>0.5",
+          "interval": "1m",
           "legendFormat": "{{instance}}: {{ nic }} received",
+          "range": true,
           "refId": "B"
         },
         {
@@ -1468,8 +1513,11 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "expr": "(irate(windows_net_packets_received_unknown_total{job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))>0.5",
+          "interval": "1m",
           "legendFormat": "{{instance}}: {{ nic }} received (unknown)",
+          "range": true,
           "refId": "C"
         },
         {
@@ -1477,8 +1525,11 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "(irate(windows_net_packets_outbound_discarded_total{job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))>0.5",
+          "interval": "1m",
           "legendFormat": "{{instance}}: {{ nic }} transmitted packets dropped",
+          "range": true,
           "refId": "D"
         },
         {
@@ -1486,12 +1537,16 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "expr": "(irate(windows_net_packets_received_discarded_total{job=~\"integrations/windows_exporter\",job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))>0.5",
+          "interval": "1m",
           "legendFormat": "{{instance}}: {{ nic }} received packets dropped",
+          "range": true,
           "refId": "E"
         }
       ],
       "title": "Network errors and dropped packets",
+      "transparent": true,
       "type": "timeseries"
     }
   ],
@@ -1504,7 +1559,7 @@
     "list": [
       {
         "current": {
-          "selected": true,
+          "selected": false,
           "text": "Metrics",
           "value": "metrics"
         },
@@ -1600,7 +1655,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-3h",
     "to": "now"
   },
   "timeRangeUpdatedDuringEditOrView": false,
@@ -1608,6 +1663,6 @@
   "timezone": "default",
   "title": "Windows fleet overview",
   "uid": "windows-fleet",
-  "version": 3,
+  "version": 2,
   "weekStart": ""
 }

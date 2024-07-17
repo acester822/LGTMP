@@ -159,8 +159,11 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "100 - (avg without (mode,core) (rate(windows_cpu_time_total{mode=\"idle\", job=\"$job\",instance=~\"$instance\"}[$__rate_interval])*100))",
+          "interval": "1m",
           "legendFormat": "CPU usage",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -260,8 +263,11 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "100 - (avg without (mode,core) (rate(windows_cpu_time_total{mode=\"idle\", job=\"$job\",instance=~\"$instance\"}[$__rate_interval])*100))",
+          "interval": "1m",
           "legendFormat": "CPU usage",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -419,8 +425,11 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "sum by(instance, mode) (irate(windows_cpu_time_total{job=\"$job\",instance=~\"$instance\"}[$__rate_interval])) \n/ on(instance) \ngroup_left sum by (instance) ((irate(windows_cpu_time_total{job=\"$job\",instance=~\"$instance\"}[$__rate_interval]))) * 100\n",
+          "interval": "1m",
           "legendFormat": "{{ mode }}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -612,8 +621,11 @@
             "type": "prometheus",
             "uid": "metrics"
           },
+          "editorMode": "code",
           "expr": "irate(windows_system_context_switches_total{job=\"$job\",instance=~\"$instance\"}[$__rate_interval])",
+          "interval": "1m",
           "legendFormat": "Context switches",
+          "range": true,
           "refId": "A"
         },
         {
@@ -621,8 +633,11 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
+          "editorMode": "code",
           "expr": "sum without (core) (irate(windows_cpu_interrupts_total{job=\"$job\",instance=~\"$instance\"}[$__rate_interval]))",
+          "interval": "1m",
           "legendFormat": "Interrupts",
+          "range": true,
           "refId": "B"
         }
       ],
@@ -631,7 +646,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "30s",
+  "refresh": "auto",
   "schemaVersion": 39,
   "tags": [
     "windows-exporter-integration"
@@ -693,9 +708,9 @@
       {
         "allValue": ".+",
         "current": {
-          "selected": true,
-          "text": "kids_1",
-          "value": "kids_1"
+          "selected": false,
+          "text": "Kids1",
+          "value": "Kids1"
         },
         "datasource": {
           "type": "prometheus",
@@ -740,7 +755,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-3h",
     "to": "now"
   },
   "timeRangeUpdatedDuringEditOrView": false,
@@ -748,6 +763,6 @@
   "timezone": "default",
   "title": "Windows CPU and system",
   "uid": "windows-system",
-  "version": 7,
+  "version": 1,
   "weekStart": ""
 }

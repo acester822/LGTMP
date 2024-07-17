@@ -2,6 +2,8 @@
 To do a silent install of Alloy on Windows, perform the following steps.
 
 ### Navigate to the latest release on GitHub. https://github.com/grafana/alloy/releases/latest
+https://github.com/grafana/alloy/releases/download/v1.2.0/alloy-installer-windows-amd64.exe.zip
+
 
 ### Scroll down to the Assets section.
 
@@ -12,7 +14,7 @@ To do a silent install of Alloy on Windows, perform the following steps.
 ### Run the following command in PowerShell or Command Prompt:
 
 ```cmd
-"Y:\Monitoring_Apps\Alloy_Configs\alloy-installer-windows-amd64.exe" /S /DISABLEREPORTING=yes
+"C:\Users\<user here>\Desktop\alloy-installer-windows-amd64.exe\alloy-installer-windows-amd64.exe" /S /DISABLEREPORTING=yes
 ```
 
 Replace the following:

@@ -1,0 +1,196 @@
+prometheus.exporter.self "integrations_alloy" { }
+
+discovery.relabel "integrations_alloy" {
+  targets = prometheus.exporter.self.integrations_alloy.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = constants.hostname 
+  }
+
+  rule {
+    target_label = "alloy_hostname"
+    replacement  = constants.hostname
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/alloy-check"
+  }
+}
+
+prometheus.scrape "integrations_alloy" {
+  targets    = discovery.relabel.integrations_alloy.output
+  forward_to = [prometheus.relabel.integrations_alloy.receiver]  
+
+  scrape_interval = "15s"
+}
+
+prometheus.relabel "integrations_alloy" {
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "(prometheus_target_sync_length_seconds_sum|prometheus_target_scrapes_.*|prometheus_target_interval.*|prometheus_sd_discovered_targets|alloy_build.*|prometheus_remote_write_wal_samples_appended_total|process_start_time_seconds)"
+    action        = "keep"
+  }
+}
+
+
+
+prometheus.exporter.windows "integrations_windows_exporter" {
+  enabled_collectors = ["cpu", "cs", "logical_disk", "net", "os", "service", "system", "textfile", "time", "diskdrive", "process"]
+}
+
+discovery.relabel "integrations_windows_exporter" {
+  targets = prometheus.exporter.windows.integrations_windows_exporter.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/windows_exporter"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = constants.hostname
+  }
+}
+
+prometheus.scrape "integrations_windows_exporter" {
+  targets    = discovery.relabel.integrations_windows_exporter.output
+  forward_to = [prometheus.relabel.integrations_windows_exporter.receiver]
+  job_name   = "integrations/windows_exporter"
+}
+
+prometheus.relabel "integrations_windows_exporter" {
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+
+  rule {
+    source_labels = ["volume"]
+    regex         = "HarddiskVolume.*"
+    action        = "drop"
+  }
+
+  rule {
+    action = "keep"
+    regex = "up|windows_process_cpu_time_total|windows_process_working_set_bytes|windows_process_private_bytes|windows_process_io_bytes_total|windows_process_page_file_bytes|windows_cpu_interrupts_total|windows_cpu_time_total|windows_process_threads|windows_process_handles|windows_process_virtual_bytes|windows_cs_hostname|windows_cs_logical_processors|windows_cs_physical_memory_bytes|windows_disk_drive_status|windows_logical_disk_avg_read_requests_queued|windows_logical_disk_avg_write_requests_queued|windows_logical_disk_free_bytes|windows_logical_disk_idle_seconds_total|windows_logical_disk_read_bytes_total|windows_logical_disk_read_seconds_total|windows_logical_disk_reads_total|windows_logical_disk_size_bytes|windows_logical_disk_write_bytes_total|windows_logical_disk_write_seconds_total|windows_logical_disk_writes_total|windows_net_bytes_received_total|windows_net_bytes_sent_total|windows_net_packets_outbound_discarded_total|windows_net_packets_outbound_errors_total|windows_net_packets_received_discarded_total|windows_net_packets_received_errors_total|windows_net_packets_received_unknown_total|windows_os_info|windows_os_paging_limit_bytes|windows_os_physical_memory_free_bytes|windows_os_timezone|windows_service_status|windows_system_context_switches_total|windows_system_processor_queue_length|windows_system_system_up_time|windows_time_computed_time_offset_seconds|windows_time_ntp_round_trip_delay_seconds"
+    source_labels = ["__name__"]
+  }
+}
+
+prometheus.remote_write "metrics_service" {
+  endpoint {
+    url = "http://<ip_here>:38080/api/v1/push"
+  }
+}
+
+loki.source.windowsevent "logs_integrations_windows_exporter_application" {
+  locale                 = 1033
+  eventlog_name          = "Application"
+  bookmark_path          = "./bookmarks-app.xml"
+  poll_interval          = "0s"
+  use_incoming_timestamp = true
+  forward_to             = [loki.relabel.logs_integrations_windows_exporter.receiver]
+  labels                 = {
+    instance = constants.hostname,
+    job      = "integrations/windows_exporter",
+  }
+}
+
+loki.source.windowsevent "logs_integrations_windows_exporter_system" {
+  locale                 = 1033
+  eventlog_name          = "System"
+  bookmark_path          = "./bookmarks-sys.xml"
+  use_incoming_timestamp = true
+  poll_interval          = "0s"
+  forward_to             = [loki.relabel.logs_integrations_windows_exporter.receiver]
+  labels                 = {
+    instance = constants.hostname,
+    job      = "integrations/windows_exporter",
+  }
+}
+
+loki.relabel "logs_integrations_windows_exporter" {
+  forward_to = [loki.process.logs_integrations_windows_exporter.receiver]
+
+  rule {
+    source_labels = ["computer"]
+    target_label  = "agent_hostname"
+  }
+}
+
+loki.process "logs_integrations_windows_exporter" {
+  forward_to = [loki.write.logs_service.receiver]
+
+  stage.json {
+    expressions = {
+      level  = "levelText",
+      source = "source",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level  = "",
+      source = "",
+    }
+  }
+}
+
+/* Step 1 - Local File Match */
+local.file_match "lenel" {
+  path_targets = [{"__path__" = "C:\\Logs\\Lenel\\LenelError_UTF8.log",}]    //*"C:\Logs\Lenel\LenelError_UTF8.log"
+  
+}
+
+/* Step 2 - Loki Source File */
+loki.source.file "lenel_files" {
+  targets     = local.file_match.lenel.targets
+  forward_to  = [loki.relabel.logs_locally_sourced.receiver]
+}
+
+/* Step 3 - Loki Relabel */
+loki.relabel "logs_locally_sourced" {
+  forward_to = [loki.process.logs_locally_sourced.receiver]
+
+  rule {
+    source_labels = ["computer"]
+    target_label  = "agent_hostname"
+  }
+}
+
+/* Step 4 - Loki Process */
+loki.process "logs_locally_sourced" {
+  forward_to = [loki.write.logs_service.receiver]
+
+  stage.static_labels {
+    values = {
+      app = "lenel",
+      log_name = "LenelError.log",                                                        //* sets the log_type
+    }
+  }
+
+  stage.multiline {
+    firstline     = "^TIME:"
+    max_wait_time = "3s"
+  }
+
+  stage.labels {                                                              //* set the extracted strings as labels
+    values = {                                                              //! do not forget to add these to the keep-labels.alloy
+      timestamp       = "",
+      level           = "",
+      error_code      = "",
+      program         = "",
+      file            = "",
+      msg             = "",
+    }
+  }
+}
+    
+
+/* Step 5 - Loki Write - Send to Loki */
+loki.write "logs_service" {
+  endpoint {
+    url = "http://<ip_here>:33100/loki/api/v1/push"
+  }
+}

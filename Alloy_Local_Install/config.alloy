@@ -23,7 +23,7 @@ prometheus.scrape "integrations_alloy" {
   targets    = discovery.relabel.integrations_alloy.output
   forward_to = [prometheus.relabel.integrations_alloy.receiver]  
 
-  scrape_interval = "60s"
+  scrape_interval = "15s"
 }
 
 prometheus.relabel "integrations_alloy" {
@@ -39,7 +39,7 @@ prometheus.relabel "integrations_alloy" {
 
 
 prometheus.exporter.windows "integrations_windows_exporter" {
-  enabled_collectors = ["cpu", "cs", "logical_disk", "net", "os", "service", "system", "textfile", "time", "diskdrive"]
+  enabled_collectors = ["cpu", "cs", "logical_disk", "net", "os", "service", "system", "textfile", "time", "diskdrive", "process"]
 }
 
 discovery.relabel "integrations_windows_exporter" {
@@ -73,14 +73,14 @@ prometheus.relabel "integrations_windows_exporter" {
 
   rule {
     action = "keep"
-    regex = "up|windows_cpu_interrupts_total|windows_cpu_time_total|windows_cs_hostname|windows_cs_logical_processors|windows_cs_physical_memory_bytes|windows_disk_drive_status|windows_logical_disk_avg_read_requests_queued|windows_logical_disk_avg_write_requests_queued|windows_logical_disk_free_bytes|windows_logical_disk_idle_seconds_total|windows_logical_disk_read_bytes_total|windows_logical_disk_read_seconds_total|windows_logical_disk_reads_total|windows_logical_disk_size_bytes|windows_logical_disk_write_bytes_total|windows_logical_disk_write_seconds_total|windows_logical_disk_writes_total|windows_net_bytes_received_total|windows_net_bytes_sent_total|windows_net_packets_outbound_discarded_total|windows_net_packets_outbound_errors_total|windows_net_packets_received_discarded_total|windows_net_packets_received_errors_total|windows_net_packets_received_unknown_total|windows_os_info|windows_os_paging_limit_bytes|windows_os_physical_memory_free_bytes|windows_os_timezone|windows_service_status|windows_system_context_switches_total|windows_system_processor_queue_length|windows_system_system_up_time|windows_time_computed_time_offset_seconds|windows_time_ntp_round_trip_delay_seconds"
+    regex = "up|windows_process_cpu_time_total|windows_process_working_set_bytes|windows_process_private_bytes|windows_process_io_bytes_total|windows_process_page_file_bytes|windows_cpu_interrupts_total|windows_cpu_time_total|windows_process_threads|windows_process_handles|windows_process_virtual_bytes|windows_cs_hostname|windows_cs_logical_processors|windows_cs_physical_memory_bytes|windows_disk_drive_status|windows_logical_disk_avg_read_requests_queued|windows_logical_disk_avg_write_requests_queued|windows_logical_disk_free_bytes|windows_logical_disk_idle_seconds_total|windows_logical_disk_read_bytes_total|windows_logical_disk_read_seconds_total|windows_logical_disk_reads_total|windows_logical_disk_size_bytes|windows_logical_disk_write_bytes_total|windows_logical_disk_write_seconds_total|windows_logical_disk_writes_total|windows_net_bytes_received_total|windows_net_bytes_sent_total|windows_net_packets_outbound_discarded_total|windows_net_packets_outbound_errors_total|windows_net_packets_received_discarded_total|windows_net_packets_received_errors_total|windows_net_packets_received_unknown_total|windows_os_info|windows_os_paging_limit_bytes|windows_os_physical_memory_free_bytes|windows_os_timezone|windows_service_status|windows_system_context_switches_total|windows_system_processor_queue_length|windows_system_system_up_time|windows_time_computed_time_offset_seconds|windows_time_ntp_round_trip_delay_seconds"
     source_labels = ["__name__"]
   }
 }
 
 prometheus.remote_write "metrics_service" {
   endpoint {
-    url = "http://192.168.68.86:38080/api/v1/push"
+    url = "http://<ip_here>:38080/api/v1/push"
   }
 }
 
@@ -168,7 +168,7 @@ loki.source.windowsevent "logs_integrations_windows_exporter_system" {
 
 loki.write "logs_service" {
   endpoint {
-    url = "http://192.168.68.86:33100/loki/api/v1/push"
+    url = "http://<ip_here>:33100/loki/api/v1/push"
   }
 }
 
