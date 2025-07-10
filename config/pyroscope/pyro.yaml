@@ -6,8 +6,10 @@ tracing:
   enabled: true
   profiling_enabled: true
 
-compactor:
-  data_dir: /data
+show_banner: false
+
+self_profiling:
+  disable_push: true  
 
 # https://github.com/grafana/pyroscope/pull/3055
 storage:

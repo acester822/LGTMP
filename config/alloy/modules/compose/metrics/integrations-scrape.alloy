@@ -32,7 +32,7 @@ declare "integrations_scrape" {
 	* Import Integrations Components
 	*****************************************************************/
 	import.file "integrate" {
-		filename = coalesce(env("ALLOY_MODULES_FOLDER"), "/etc/alloy/modules") + "/compose/integrations"
+		filename = coalesce(sys.env("ALLOY_MODULES_FOLDER"), "/etc/alloy/modules") + "/compose/integrations"
 	}
 
 	/*****************************************************************
@@ -41,7 +41,7 @@ declare "integrations_scrape" {
 	integrate.component_cadvisor "default" {
 		forward_to = argument.forward_to.value
 
-		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
+		scrape_interval = coalesce(argument.scrape_interval.value, "60s")
 		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
 	}
 
@@ -51,17 +51,7 @@ declare "integrations_scrape" {
 	integrate.component_node_exporter "default" {
 		forward_to = argument.forward_to.value
 
-		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
-		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
-	}
-
-	/*****************************************************************
-	* Node Exporter Integrations
-	*****************************************************************/
-	integrate.component_process_exporter "default" {
-		forward_to = argument.forward_to.value
-
-		scrape_interval = coalesce(argument.scrape_interval.value, "15s")
+		scrape_interval = coalesce(argument.scrape_interval.value, "60s")
 		scrape_timeout  = coalesce(argument.scrape_timeout.value, "10s")
 	}
 

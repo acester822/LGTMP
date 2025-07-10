@@ -1,6 +1,7 @@
+# Multi-tenant mode is set in the configuration with auth_enabled: true
+# https://grafana.com/docs/loki/latest/operations/multi-tenancy/
 auth_enabled: false
 
-# -reporting.enabled=false
 analytics:
  reporting_enabled: false
 
@@ -8,9 +9,12 @@ server:
   http_listen_port: 3100
   grpc_listen_port: 9095
   log_level: info
-  log_format: logfmt
+  log_format: json
 
 common:
+  ring:
+    kvstore:
+      store: memberlist
   compactor_address: http://loki:3100
   path_prefix: /loki
   replication_factor: 1
@@ -29,17 +33,6 @@ bloom_gateway:
   enabled: true
   client:
     addresses: "dns+loki:9095"
-    cache_results: true
-    results_cache:
-      cache:
-        memcached_client:
-          addresses: "dns+memcached:11211"
-
-bloom_compactor:
-  enabled: true
-  ring:
-    kvstore:
-      store: memberlist
 
 index_gateway:
   mode: simple

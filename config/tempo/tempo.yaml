@@ -3,7 +3,7 @@
 
 stream_over_http_enabled: true
 
-multitenancy_enabled: false
+multitenancy_enabled: true
 usage_report:
   reporting_enabled: false
 
@@ -16,18 +16,14 @@ distributor:
     otlp:
       protocols:
         grpc:
-          endpoint: 0.0.0.0:4317
+          endpoint: tempo:4317
         http:
-          endpoint: 0.0.0.0:4318
+          endpoint: tempo:4318
 
 ingester:
   trace_idle_period: 10s
   max_block_bytes: 1_000_000
   max_block_duration: 5m
-
-querier:
-  frontend_worker:
-    frontend_address: tempo:9095
 
 server:
   http_listen_port: 3200
@@ -55,11 +51,13 @@ metrics_generator:
     path: /tmp/tempo/generator/wal
     remote_write_add_org_id_header: true
     remote_write:
-    - url: http://mimir:8080/api/v1/push
+    - url: http://gateway:8080/api/v1/push
       send_exemplars: true
       send_native_histograms: true
       headers:
         X-Scope-OrgID: "anonymous"
+  traces_storage:
+    path: /tmp/tempo/generator/traces
 
 storage:
   trace:
@@ -76,8 +74,6 @@ storage:
 
 # https://github.com/grafana/tempo/blob/main/docs/sources/tempo/configuration/_index.md#cache
 cache:
-  background:
-    writeback_goroutines: 5
   caches:
   - roles:
     - bloom
@@ -97,3 +93,5 @@ overrides:
       processors:
       - service-graphs
       - span-metrics
+      - local-blocks
+      generate_native_histograms: both

@@ -39,7 +39,7 @@ services:
     labels:
       logs.grafana.com/log-format: logfmt
     depends_on: { gateway: { condition: service_healthy } }
-    image: ${ALLOY_IMAGE:-docker.io/grafana/alloy:v1.1.1}
+    image: ${ALLOY_IMAGE:-docker.io/grafana/alloy:v1.9.2}
     configs:
       - source: alloy_config_file
         target: /etc/alloy/config.alloy
@@ -83,10 +83,18 @@ services:
 
   gateway:
     labels:
-      metrics.grafana.com/scrape: false
+      metrics.grafana.com/scrape: true
       logs.grafana.com/log-format: clf
-    depends_on: { loki: { condition: service_healthy }, tempo: { condition: service_healthy }, mimir: { condition: service_healthy }, pyroscope: { condition: service_healthy } }
-    image: ${NGINX_IMAGE:-docker.io/nginxinc/nginx-unprivileged:1.25-alpine}
+    depends_on:
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+      mimir:
+        condition: service_started
+      pyroscope:
+        condition: service_healthy    
+    image: ${NGINX_IMAGE:-docker.io/nginxinc/nginx-unprivileged:1.27-alpine}
     restart: always
     volumes:
       - ./config/nginx/10-default-lgtmp.envsh:/docker-entrypoint.d/10-default-lgtmp.envsh
@@ -96,7 +104,7 @@ services:
       - ./config/mimir/gateway_mimir.conf:/etc/nginx/templates/gateway_mimir.conf.template
       - ./config/pyroscope/gateway_pyroscope.conf:/etc/nginx/templates/gateway_pyroscope.conf.template
     healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1" ]
+      test: [ "CMD", "/usr/bin/wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/" ]
       interval: 3s
       timeout: 1s
       retries: 20
@@ -110,7 +118,7 @@ services:
       profiles.grafana.com/service_name: loki
       logs.grafana.com/log-format: logfmt
     depends_on: { minio: { condition: service_healthy } }
-    image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.0.0}
+    image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.5.1}
     configs:
       - source: loki_config_file
         target: /etc/loki/config.yaml
@@ -124,7 +132,10 @@ services:
       <<: *jaeger-environment
       JAEGER_TAGS: app=loki
     healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1" ]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 3s
+      timeout: 1s
+      retries: 15
       <<: *status-healthcheck
     # expose 33100 port so we can directly access loki inside container
     ports:
@@ -139,8 +150,8 @@ services:
       <<: *profiles-labels
       metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: tempo
-    depends_on: { minio: { condition: service_healthy }, mimir: { condition: service_healthy } }
-    image: ${TEMPO_IMAGE:-docker.io/grafana/tempo:2.4.1}
+    depends_on: {minio: {condition: service_healthy}}
+    image: ${TEMPO_IMAGE:-docker.io/grafana/tempo:2.8.1}
     configs:
       - source: tempo_config_file
         target: /etc/tempo/config.yaml
@@ -154,9 +165,8 @@ services:
       <<: *jaeger-environment
       JAEGER_TAGS: app=tempo
     healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3200/ready || exit 1" ]
+      test: ["CMD", "/usr/bin/wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3200/ready"]
       <<: *status-healthcheck
-      start_period: 10s
     # expose 33200 port so we can directly access tempo inside container
     ports:
       - "33200:3200"
@@ -168,7 +178,7 @@ services:
       profiles.grafana.com/service_name: mimir
       logs.grafana.com/log-format: logfmt
     depends_on: { minio: { condition: service_healthy } }
-    image: ${MIMIR_IMAGE:-docker.io/grafana/mimir:2.12.0}
+    image: ${MIMIR_IMAGE:-docker.io/grafana/mimir:2.16.1}
     configs:
       - source: mimir_config_file
         target: /etc/mimir/config.yaml
@@ -178,13 +188,6 @@ services:
       - -config.file=/etc/mimir/config.yaml
       - -target=all
       - -config.expand-env=true
-      - -ruler.max-rules-per-rule-group=50
-    environment:
-      <<: *jaeger-environment
-      JAEGER_TAGS: app=mimir
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ready || exit 1" ]
-      <<: *status-healthcheck
     # expose 38080 port so we can directly access mimir inside container
     ports:
       - "38080:8080"
@@ -198,7 +201,7 @@ services:
       metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: pyroscope
     depends_on: { minio: { condition: service_healthy } }
-    image: ${PYROSCOPE_IMAGE:-docker.io/grafana/pyroscope:1.6.0}
+    image: ${PYROSCOPE_IMAGE:-docker.io/grafana/pyroscope:1.14.0}
     configs:
       - source: pyroscope_config_file
         target: /etc/pyroscope/config.yaml
@@ -212,7 +215,7 @@ services:
       <<: *jaeger-environment
       JAEGER_TAGS: app=pyroscope
     healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4040/ready || exit 1" ]
+      test: ["CMD", "profilecli", "ready"]
       <<: *status-healthcheck
     # expose 34040 port so we can directly access pyroscope inside container
     ports:
@@ -228,7 +231,7 @@ services:
       metrics.grafana.com/port: 9000
       metrics.grafana.com/interval: 15s
       metrics.grafana.com/timeout: 10s
-    image: ${MINIO_IMAGE:-docker.io/minio/minio:RELEASE.2024-03-15T01-07-19Z}
+    image: ${MINIO_IMAGE:-docker.io/minio/minio:RELEASE.2024-12-18T13-15-44Z}
     entrypoint:
       - sh
       - -euc
@@ -258,7 +261,7 @@ services:
 
   inbucket:
     labels:
-      metrics.grafana.com/scrape: false
+      metrics.grafana.com/scrape: true
     image: ${INBUCKET_IMAGE:-inbucket/inbucket:3.0.4}
     ports:
       - 2500 # SMTP
@@ -270,8 +273,8 @@ services:
 
   grafana:
     labels:
-      metrics.grafana.com/scrape: false
-    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:11.0.0-preview}
+      metrics.grafana.com/scrape: true
+    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:12.0.2}
     command:
       - --config=/etc/grafana-config/grafana.ini
     volumes:
@@ -279,18 +282,18 @@ services:
       - dashboards_data:/var/lib/grafana/dashboards
       - ./config/grafana/provisioning:/etc/grafana/provisioning
        #- ./config/grafana/provisioning/datasources/redis.yaml:/etc/grafana/provisioning/datasources/redis.yaml
-      - ./config/grafana/provisioning/plugins/grafana-lokiexplore-app.yaml:/etc/grafana/provisioning/plugins/grafana-lokiexplore-app.yaml
+       #- ./config/grafana/provisioning/plugins/grafana-lokiexplore-app.yaml:/etc/grafana/provisioning/plugins/grafana-lokiexplore-app.yaml
        #- ./config/grafana/provisioning/plugins/grafana-oncall-app.yaml:/etc/grafana/provisioning/plugins/grafana-oncall-app.yaml
        #- ./config/grafana/provisioning/plugins/redis-app.yaml:/etc/grafana/provisioning/plugins/redis-app.yaml
       - ./config/grafana/provisioning/dashboards/:/var/lib/grafana/dashboards/
     environment:
       GF_FEATURE_TOGGLES_ENABLE: traceqlEditor tracesEmbeddedFlameGraph traceqlSearch correlations metricsSummary traceToMetrics traceToProfiles
         # add to toggles for oncall > accessControlOnCall
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-lokiexplore-app
+       #GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-lokiexplore-app
         # add to plugins for oncall > grafana-oncall-app
       GF_SMTP_ENABLED: true
       GF_SMTP_HOST: inbucket:2500
-      GF_INSTALL_PLUGINS: https://storage.googleapis.com/integration-artifacts/grafana-lokiexplore-app/grafana-lokiexplore-app-latest.zip;grafana-lokiexplore-app,
+       #GF_INSTALL_PLUGINS: https://storage.googleapis.com/integration-artifacts/grafana-lokiexplore-app/grafana-lokiexplore-app-latest.zip;grafana-lokiexplore-app,
         #add to plugins if you want oncall > grafana-oncall-app v1.4.0, redis-app v2.2.1
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
@@ -300,8 +303,8 @@ services:
   mimirtool:
     # https://github.com/qclaogui/codelab-monitoring/blob/main/alloy-modules/compose/README.md
     labels:
-      metrics.grafana.com/scrape: false
-    image: ${MIMIRTOOL_IMAGE:-docker.io/grafana/mimirtool:2.12.0}
+      metrics.grafana.com/scrape: true
+    image: ${MIMIRTOOL_IMAGE:-docker.io/grafana/mimirtool:2.16.1}
     volumes:
       - ./monitoring-mixins/alloy-mixin/deploy/alloy-mixin-alerts.yaml:/rules/alloy-mixin-alerts.yaml
       - ./monitoring-mixins/memcached-mixin/deploy/memcached-mixin-alerts.yaml:/rules/memcached-mixin-alerts.yaml
@@ -322,17 +325,5 @@ services:
 
   memcached:
     labels:
-      metrics.grafana.com/scrape: false
-    image: ${MEMCACHED_IMAGE:-docker.io/memcached:1.6.24-alpine}
-
-  memcached-exporter:
-    labels:
-      - logs.grafana.com/scrape=false
-      - metrics.grafana.com/scrape=false
-      - metrics.grafana.com/job=memcached
-      - metrics.grafana.com/port=9150
-      - metrics.grafana.com/interval=15s
-    image: ${MEMCACHED_EXPORTER_IMAGE:-prom/memcached-exporter:v0.14.2}
-    command:
-      - --memcached.address=memcached:11211
-      - --web.listen-address=0.0.0.0:9150
+      metrics.grafana.com/scrape: true
+    image: ${MEMCACHED_IMAGE:-docker.io/memcached:1.6.34-alpine}

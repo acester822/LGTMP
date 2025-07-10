@@ -24,6 +24,11 @@ declare "component_memcached" {
 		default  = "5s"
 	}
 
+	argument "job_label" {
+		optional = true
+		default  = "integrations/docker/memcached"
+	}
+
 	argument "instance_name" {
 		comment  = "instance of the Memcached"
 		optional = true
@@ -31,7 +36,7 @@ declare "component_memcached" {
 
 	argument "keep_metrics" {
 		optional = true
-		default = "(up|memcached_commands_total|memcached_connections_total|memcached_current_bytes|memcached_current_connections|memcached_current_items|memcached_items_evicted_total|memcached_items_total|memcached_max_connections|memcached_read_bytes_total|memcached_up|memcached_uptime_seconds|memcached_version|memcached_written_bytes_total)"
+		default  = "(up|memcached_commands_total|memcached_connections_total|memcached_current_bytes|memcached_current_connections|memcached_current_items|memcached_items_evicted_total|memcached_items_total|memcached_max_connections|memcached_read_bytes_total|memcached_up|memcached_uptime_seconds|memcached_version|memcached_written_bytes_total)"
 	}
 
 	argument "scrape_interval" {
@@ -49,7 +54,8 @@ declare "component_memcached" {
 	/***************************************************************
 	* Integrations Memcached
 	****************************************************************/
-	prometheus.exporter.memcached "integrations_memcached" {
+	// https://grafana.com/docs/alloy/latest/reference/components/prometheus.exporter.memcached/
+	prometheus.exporter.memcached "integrations_memcached_exporter" {
 		address = argument.memcached_address.value
 		timeout = argument.memcached_timeout.value
 	}
@@ -57,12 +63,12 @@ declare "component_memcached" {
 	/***************************************************************
 	* Discovery Relabelings (pre-scrape)
 	****************************************************************/
-	discovery.relabel "integrations_memcached" {
-		targets = prometheus.exporter.memcached.integrations_memcached.targets
+	discovery.relabel "integrations_memcached_exporter" {
+		targets = prometheus.exporter.memcached.integrations_memcached_exporter.targets
 
 		rule {
 			target_label = "job"
-			replacement  = "integrations/compose/memcached"
+			replacement  = argument.job_label.value
 		}
 
 		rule {
@@ -74,13 +80,12 @@ declare "component_memcached" {
 	/***************************************************************
 	* Prometheus Scrape Integrations Targets
 	****************************************************************/
-	prometheus.scrape "integrations_memcached" {
-		targets = concat(
-			discovery.relabel.integrations_memcached.output,
+	prometheus.scrape "integrations_memcached_exporter" {
+		targets = array.concat(
+			discovery.relabel.integrations_memcached_exporter.output,
 		)
 
-		enable_protobuf_negotiation = true
-		scrape_classic_histograms   = true
+		scrape_classic_histograms = true
 
 		scrape_interval = argument.scrape_interval.value
 		scrape_timeout  = argument.scrape_timeout.value
@@ -89,13 +94,13 @@ declare "component_memcached" {
 			enabled = true
 		}
 
-		forward_to = [prometheus.relabel.integrations_memcached.receiver]
+		forward_to = [prometheus.relabel.integrations_memcached_exporter.receiver]
 	}
 
 	/***************************************************************
 	* Prometheus Metric Relabelings (post-scrape)
 	****************************************************************/
-	prometheus.relabel "integrations_memcached" {
+	prometheus.relabel "integrations_memcached_exporter" {
 		forward_to = argument.forward_to.value
 
 		// keep only metrics that match the keep_metrics regex
