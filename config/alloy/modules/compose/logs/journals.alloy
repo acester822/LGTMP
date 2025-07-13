@@ -43,7 +43,7 @@ declare "component_journals" {
 		relabel_rules = loki.relabel.journal.rules
 		path          = "/var/log/journal"
 		labels        = {
-			"job" = "integrations/node_exporter",
+			"job" = "integrations/docker/node-exporter",
 		}
 	}
 }

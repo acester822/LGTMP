@@ -5,6 +5,29 @@ Module Components: component_node_exporter
 
 declare "component_node_exporter" {
 
+	/*****************************************************************
+	* ARGUMENTS
+	*****************************************************************/
+	argument "forward_to" {
+		comment = "Must be a list(MetricssReceiver) where collected metrics should be forwarded to"
+	}
+
+	argument "instance_name" {
+		optional = true
+	}
+
+	argument "scrape_interval" {
+		comment  = "How often to scrape metrics from the targets (default: 60s)"
+		optional = true
+		default  = "30s"
+	}
+
+	argument "scrape_timeout" {
+		comment  = "How long before a scrape times out (default: 10s)"
+		optional = true
+		default  = "10s"
+	}
+
 	/***************************************************************
 	* Component - Node Exporter
 	****************************************************************/
@@ -43,12 +66,13 @@ declare "component_node_exporter" {
 
 		rule {
 			target_label = "job"
-			replacement  = integrations/docker/node-exporter
+			replacement  = "integrations/docker/node-exporter"
+			action        = "replace"
 		}
 
 		rule {
 			target_label = "instance"
-			replacement  = constants.hostname
+			replacement  = coalesce(argument.instance_name.value, constants.hostname)
 		}
 	}
 
@@ -62,8 +86,8 @@ declare "component_node_exporter" {
 
 		scrape_classic_histograms = true
 
-		scrape_interval = "30s"
-		scrape_timeout  = "10s"
+		scrape_interval = argument.scrape_interval.value
+		scrape_timeout  = argument.scrape_timeout.value
 
 		clustering {
 			enabled = true
@@ -79,11 +103,11 @@ declare "component_node_exporter" {
 		forward_to = argument.forward_to.value
 
 		// keep only metrics that match the keep_metrics regex
-		rule {
-			source_labels = ["__name__"]
-			regex         = "(up|node_uname_info|node_exporter_build_info|node_time_seconds|node_boot_time_seconds|node_load.*|node_cpu.*|node_memory.*|node_disk.*|node_filesystem.*|process_cpu_seconds_total|process_resident_memory_bytes)"
-			action        = "keep"
-		}
+		//rule {
+		//	source_labels = ["__name__"]
+		//	regex         = "(up|node_uname_info|node_exporter_build_info|node_time_seconds|node_boot_time_seconds|node_load.*|node_cpu.*|node_memory.*|node_disk.*|node_filesystem.*|process_cpu_seconds_total|process_resident_memory_bytes)"
+		//	action        = "keep"
+		//}
 
 		// Drop metrics for certain file systems
 		rule {

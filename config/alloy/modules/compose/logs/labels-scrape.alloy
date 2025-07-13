@@ -1,21 +1,23 @@
-/*
-Module Components: labels_scrape
-Description: Scrapes targets for logs based on Docker Containers labels
+//*
+//*			Location: LGTMP Stack
+//*
+//// 		Module Component: labels_scrape
+//// 			Description: Scrapes targets for logs based on Docker Containers labels
+////
+//// 		Labels available:
+////  			logs.grafana.com/scrape: true/false
+////  			logs.grafana.com/log-format: test/logfmt/clf still need to add others
+////			logs.grafana.com/tenant: "primary"
 
-Following labels are available:
-  logs.grafana.com/scrape: true
-
- allow containers to declare what tenant their logs should be written to,
- the following label is supported:
-
-   logs.grafana.com/tenant: "primary"
-*/
 
 declare "labels_scrape" {
 
-	/*****************************************************************
-	* ARGUMENTS
-	*****************************************************************/
+		    /////-------------------------------------------------------\\\\\
+		   /////														 \\\\\
+		  /////							Arguments						  \\\\\
+		 /////															   \\\\\
+		/////---------------------------------------------------------------\\\\\
+
 	argument "forward_to" {
 		comment = "Must be a list(LogsReceiver) where collected logs should be forwarded to"
 	}
@@ -52,7 +54,12 @@ declare "labels_scrape" {
 		default  = "(.*)"
 	}
 
-	// find all containers
+		    /////-------------------------------------------------------\\\\\
+		   /////														 \\\\\
+		  /////						Find Containers						  \\\\\
+		 /////															   \\\\\
+		/////---------------------------------------------------------------\\\\\
+
 	discovery.docker "dd_logs" {
 		host             = "unix:///var/run/docker.sock"
 		refresh_interval = "30s"
@@ -62,6 +69,11 @@ declare "labels_scrape" {
 			values = ["running"]
 		}
 	}
+		    /////-------------------------------------------------------\\\\\
+		   /////														 \\\\\
+		  /////						Filter Containers					  \\\\\
+		 /////															   \\\\\
+		/////---------------------------------------------------------------\\\\\
 
 	// filter logs by docker compose labels
 	discovery.relabel "label_logs_filter" {
@@ -182,6 +194,12 @@ declare "labels_scrape" {
 		}
 	}
 
+		    /////-------------------------------------------------------\\\\\
+		   /////														 \\\\\
+		  /////					Define Loki's Source					  \\\\\
+		 /////															   \\\\\
+		/////---------------------------------------------------------------\\\\\
+
 	loki.source.docker "lsd_docker_logs" {
 		host          = "unix:///var/run/docker.sock"
 		targets       = discovery.relabel.label_logs_filter.output
@@ -191,12 +209,289 @@ declare "labels_scrape" {
 		forward_to = [loki.process.parse.receiver]
 	}
 
-	// parse the log based on the container runtime
-	loki.process "parse" {
+		    /////-------------------------------------------------------\\\\\
+		   /////														 \\\\\
+		  /////					Container Runtime Parsing				  \\\\\
+		 /////															   \\\\\
+		/////---------------------------------------------------------------\\\\\
+
+	loki.process "parse" { //* 															Parse the log at container runtime:
 		forward_to = argument.forward_to.value
-		/*******************************************************************************
-		*                         Container Runtime Parsing
-		********************************************************************************/
+
+		stage.match { //*																logs.grafana.com/log-format: arr																															//* logs.grafana.com/log-format: test
+			pipeline_name = "pipeline for annotation || logs.grafana.com/log-format: arr"															//* sets pipeline and what "format" it is looking for
+			selector = "{log_type=\"\", logs_grafana_com_log_format=~\"(?i).*(arr).*\"} |~ \"^(\\\\[[^]]+\\\\])\\\\s+(\\\\w+):\\\\s+(.*)$\""		//! This must be escaped x4 aka \s+ is \\\\s+
+
+			stage.static_labels {
+				values = {
+					log_type = "arr",																												//* sets the log_type
+				}
+			}
+
+			stage.regex {
+				expression = `\[(?P<level>.*?)\] (?P<extracted_service_name>.*?): (?P<msg>.*)`							//* Must either already have a label in the log, or use a regex to create them such as this
+			}
+
+			stage.labels {																															//* set the extracted strings as labels
+				values = {																															//! do not forget to add these to the keep-labels.alloy
+					level  					= "",
+					extracted_service_name 	= "",
+					msg 					= "",
+				}
+			}
+		}
+
+		stage.match { //*																logs.grafana.com/log-format: clf
+			pipeline_name = "pipeline for annotation || logs.grafana.com/log-format: clf"
+			// unescaped regex: \S+\s+\S+\s+\S+\s+\[\S+\s+\S+\]\s+"[^"]+"\s+\d+\s+\d+
+			selector = "{log_type=\"\", logs_grafana_com_log_format=~\"(?i).*((apache|nginx|common-?log|clf)).*\"} |~ \"^\\\\S+\\\\s+\\\\S+\\\\s+\\\\S+\\\\s+\\\\[\\\\S+\\\\s+\\\\S+\\\\]\\\\s+\\\"[^\\\"]+\\\"\\\\s+\\\\d+\\\\s+\\\\d+$\""
+
+			// clf doesn't have a log level, set default to info, set the log_type
+			stage.static_labels {
+				values = {
+					level    = "info",
+					log_type = "clf",
+				}
+			}
+
+			// extract the http response code and request method as they might want to be used as labels
+			stage.regex {
+				// unescaped regex: (?P<response_code>\d{3}) "(?P<request_method>\S+)
+				expression = "(?P<response_code>[0-9]{3}) \"(?P<request_method>\\S+)"
+			}
+
+			// set the extracted response code and request method as labels
+			stage.labels {
+				values = {
+					response_code  = "",
+					request_method = "",
+				}
+			}
+
+			// check to see if the string failed is found in the log line, if so set the level to error
+			stage.match {
+				selector = "{logs_grafana_com_log_format=~\"(?i)(apache|nginx|common-log|clf)\"} |~ \" (failed|error) \""
+
+				stage.static_labels {
+					values = {
+						level = "error",
+					}
+				}
+			}
+
+			// check logs.grafana.com/scrub-timestamp annotation, if true remove the timestamp from the log line
+			// this can reduce the overall # of bytes sent and stored in Loki
+			stage.match {
+				selector      = "{logs_grafana_com_scrub_timestamp=\"true\"}"
+				pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-timestamp: true"
+
+				// remove timestamp from the log line
+				// unescaped regex: (\[([^\]]+)\])
+				stage.replace {
+					expression = "(\\[([^\\]]+)\\])"
+					replace    = ""
+				}
+			}
+		}
+
+		stage.match { //*																logs.grafana.com/log-format: logfmt
+			pipeline_name = "pipeline for annotation || logs.grafana.com/log-format: logfmt"
+			// unescaped regex: (\w+=("[^"]*"|\S+))(\s+(\w+=("[^"]*"|\S+)))*\s*
+			selector = "{log_type=\"\", logs_grafana_com_log_format=~\"(?i).*(logfmt).*\"} |~ \"(\\\\w+=(\\\"[^\\\"]*\\\"|\\\\S+))(\\\\s+(\\\\w+=(\\\"[^\\\"]*\\\"|\\\\S+)))*\\\\s*\""
+
+			// set the log_type
+			stage.static_labels {
+				values = {
+					log_type = "logfmt",
+				}
+			}
+
+			// while the level could be extracted as logfmt, this allows for multiple possible log levels formats
+			// i.e. loglevel=info, level=info, lvl=info, loglvl=info
+			stage.regex {
+				expression = "(log)?(level|lvl)=\"?(?P<level>\\S+)\"?"
+			}
+
+			// set the extracted level value as a label
+			stage.labels {
+				values = {
+					level = "",
+				}
+			}
+
+			stage.match {
+				selector      = "{logs_grafana_com_scrub_timestamp=\"true\"}"
+				pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-timestamp: true"
+
+				// remove timestamp from the log line
+
+				// unescaped regex: ((ts?|timestamp)=\d{4}-\d{2}-\d{2}(T|\s+)\d{2}:\d{2}:\d{2}(\.\d+)?(Z|(\+|-)\d+)?\s+)
+				stage.replace {
+					expression = "((ts?|timestamp)=[0-9]{4}-[0-9]{2}-[0-9]{2}(T|\\s+)[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|(\\+|-)[0-9]+)?\\s+)"
+					replace    = ""
+				}
+			}
+
+			// check logs.grafana.com/scrub-level annotation, if true remove the level from the log line (it is still a label)
+			// this can reduce the overall # of bytes sent and stored in Loki
+			stage.match {
+				selector      = "{logs_grafana_com_scrub_level=~\"(?i)true\"}"
+				pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-level: true"
+
+				// remove level from the log line
+				stage.replace {
+					// unescaped regex: (log)?(lvl|level)="?[^\s]+\s"?
+					expression = "(?i)((log)?(lvl|level)=\"?[^\\s]+\\s\"?)"
+					replace    = ""
+				}
+			}
+		}
+
+		stage.match { //*																logs.grafana.com/log-format: json
+			pipeline_name = "pipeline for annotation || logs.grafana.com/log-format: json"
+			selector      = "{log_type=\"\", logs_grafana_com_log_format=~\"(?i).*((generic-?)?json).*\"} |~ \"^\\\\s*\\\\{.+\\\\}\\\\s*$\""
+
+			// set the log_type
+			stage.static_labels {
+				values = {
+					log_type = "json",
+				}
+			}
+
+			// extract the level
+			stage.json {
+				expressions = {
+					level = "level || lvl || loglevel || LogLevel || log_level || logLevel || log_lvl || logLvl || levelname || levelName || LevelName",
+				}
+			}
+
+			// set the extracted level as a label
+			stage.labels {
+				values = {
+					level = "",
+				}
+			}
+
+			// check logs.grafana.com/scrub-timestamp annotation, if true remove the timestamp from the log line
+			// this can reduce the overall # of bytes sent and stored in Loki
+			// remove timestamp from the log line, depending on the entry it can be "start_time" or "time"
+			stage.match {
+				selector      = "{logs_grafana_com_scrub_timestamp=\"true\"}"
+				pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-timestamp: true"
+
+				// remove timestamp from the log line
+				// unescaped regex: (?i)("(timestamp|ts|logdate|time)"\s*:\s*"[^"]+",?)
+				stage.replace {
+					expression = "(?i)(\"(timestamp|ts|logdate|time)\"\\s*:\\s*\"[^\"]+\",?)"
+					replace    = ""
+				}
+			}
+
+			// check logs.grafana.com/scrub-level annotation, if true remove the level from the log line (it is still a label)
+			// this can reduce the overall # of bytes sent and stored in Loki
+			stage.match {
+				selector      = "{logs_grafana_com_scrub_level=~\"(?i)true\"}"
+				pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-level: true"
+
+				// remove level from the log line
+				stage.replace {
+					// unescaped regex: (?i)"(log)?(level|lvl)"\s*:\s*"[^"]+",?
+					expression = "(?i)(\"(log)?(level|lvl)\"\\s*:\\s*\"[^\"]+\",?)"
+					replace    = ""
+				}
+			}
+		}
+
+		stage.match { //*																logs.grafana.com/log-format: syslog
+			pipeline_name = "pipeline for annotation || logs.grafana.com/log-format: syslog"
+			// unescaped regex: ^[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+\S+\[\d+\]:\s+.*$
+			selector = "{log_type=\"\", logs_grafana_com_log_format=~\"(?i).*(syslog).*\"} |~ \"^[A-Za-z]{3}\\\\s+\\\\d{1,2}\\\\s+\\\\d{2}:\\\\d{2}:\\\\d{2}\\\\s+\\\\S+\\\\s+\\\\S+\\\\[\\\\d+\\\\]:\\\\s+.*$\""
+
+			stage.static_labels {
+				values = {
+					// set the log_type
+					log_type = "syslog",
+					level    = "info",
+				}
+			}
+
+			// check logs.grafana.com/scrub-timestamp annotation, if true remove the timestamp from the log line
+			// this can reduce the overall # of bytes sent and stored in Loki
+			stage.match {
+				selector      = "{logs_grafana_com_scrub_timestamp=\"true\"}"
+				pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-timestamp: true"
+
+				// remove timestamp from the log line
+				// unescaped regex: ^[A-Za-z]{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}
+				stage.replace {
+					expression = "(^[A-Za-z]{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})"
+					replace    = ""
+				}
+			}
+		}
+
+			stage.match { //*															assign log level as unkown if it doesn't match any from above
+				selector = "{level=\"\"}"
+
+				// default level to unknown
+				stage.static_labels {
+					values = {
+						level = "unknown",
+					}
+				}
+			}
+
+			stage.match { //*															assign log_type as unknown if it doesn't match any from above
+				selector = "{log_type=\"\"}"
+
+				// default level to unknown
+				stage.static_labels {
+					values = {
+						log_type = "unknown",
+					}
+				}
+			}
+
+		stage.match { //*																one last attempt to get common log levels using regex
+			selector = "{level=\"unknown\"}"
+
+			// unescaped regex: (?i)(?:"(?:level|loglevel|levelname|lvl|SeverityText)":\s*"|\s+(?:level|loglevel|lvl)="?|\s+\[?)(?P<level>(DEBUG?|INFO|WARN(ING)?|ERR(OR)?|CRITICAL|FATAL|NOTICE|TRACE))("|\s+|-|\s*\])
+			stage.regex {
+				expression = "(?i)(?:\"(?:level|loglevel|levelname|lvl|SeverityText)\":\\s*\"|\\s+(?:level|loglevel|lvl)=\"?|\\s+\\[?)(?P<level>(DEBUG?|INFO|WARN(ING)?|ERR(OR)?|CRITICAL|FATAL|NOTICE|TRACE))(\"|\\s+|-|\\s*\\])"
+			}
+
+			// set the extracted level to be a label
+			stage.labels {
+				values = {
+					level = "",
+				}
+			}
+		}
+
+		stage.match { //*																logs.grafana.com/scrub-empties: true/false
+			selector      = "{logs_grafana_com_scrub_empties=~\"(?i)(dotnet-?json|istio|(generic-?)?json|log4j-?json|(otel|open-?telemetry)(-?json)?|python-?json)\",logs_grafana_com_scrub_nulls=~\"(?i)true\"}"
+			pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-null: true"
+
+			// remove null properties
+			stage.replace {
+				// unescaped regex: (\s*,\s*("[^"]+"\s*:\s*(\[\s*\]|\{\s*\}|"\s*"))|("[^"]+"\s*:\s*(\[\s*\]|\{\s*\}|"\s*"))\s*,\s*)
+				expression = "(\\s*,\\s*(\"[^\"]+\"\\s*:\\s*(\\[\\s*\\]|\\{\\s*\\}|\"\\s*\"))|(\"[^\"]+\"\\s*:\\s*(\\[\\s*\\]|\\{\\s*\\}|\"\\s*\"))\\s*,\\s*)"
+				replace    = ""
+			}
+		}
+
+		stage.match { //*																logs.grafana.com/scrub-nulls: true/false
+			selector      = "{logs_grafana_com_scrub_nulls=~\"(?i)(dotnet-?json|istio|(generic-?)?json|log4j-?json|(otel|open-?telemetry)(-?json)?|python-?json)\",logs_grafana_com_scrub_nulls=~\"(?i)true\"}"
+			pipeline_name = "pipeline for annotation || logs.grafana.com/scrub-null: true"
+
+			// remove null properties
+			stage.replace {
+				// unescaped regex: (\s*,\s*("[^"]+"\s*:\s*null)|("[^"]+"\s*:\s*null)\s*,\s*)
+				expression = "(\\s*,\\s*(\"[^\"]+\"\\s*:\\s*null)|(\"[^\"]+\"\\s*:\\s*null)\\s*,\\s*)"
+				replace    = ""
+			}
+		}
+
 		// if the label tmp_container_runtime from above is containerd parse using cri
 		stage.match {
 			selector = "{tmp_container_runtime=\"containerd\"}"
@@ -212,7 +507,7 @@ declare "labels_scrape" {
 			}
 		}
 
-		// if the label tmp_container_runtime from above is docker parse using docker
+		// if the label tmp_container_runtime from above is docker parse using docker 
 		stage.match {
 			selector = "{tmp_container_runtime=\"docker\"}"
 			// the docker processing stage extracts the following k/v pairs: log, stream, time
