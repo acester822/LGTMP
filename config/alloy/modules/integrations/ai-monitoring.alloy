@@ -1,0 +1,94 @@
+declare "component_ai_monitoring" {
+	argument "forward_to" {
+		comment = "Must be a list(MetricsReceiver) where collected metrics should be forwarded to"
+	}
+
+	argument "scrape_interval" {
+		optional = true
+		default  = "15s"
+	}
+
+	argument "scrape_timeout" {
+		optional = true
+		default  = "10s"
+	}
+
+	argument "enabled" {
+		optional = true
+		default  = coalesce(sys.env("AI_MONITORING_ENABLED"), "false")
+	}
+
+	argument "dcgm_target" {
+		optional = true
+		default  = coalesce(sys.env("DCGM_EXPORTER_TARGET"), "dcgm-exporter:9400")
+	}
+
+	argument "inference_target" {
+		optional = true
+		default  = coalesce(sys.env("AI_INFERENCE_METRICS_TARGET"), "ai-inference:8000")
+	}
+
+	argument "token_target" {
+		optional = true
+		default  = coalesce(sys.env("AI_TOKEN_METRICS_TARGET"), "ai-inference:8000")
+	}
+
+	argument "llm_api_target" {
+		optional = true
+		default  = coalesce(sys.env("LLM_API_METRICS_TARGET"), "ollama:11434")
+	}
+
+	discovery.relabel "ai_targets" {
+		targets = [
+			{
+				__address__  = argument.dcgm_target.value,
+				__tmp_enable = argument.enabled.value,
+				job          = "integrations/ai/gpu",
+				metric_scope = "gpu",
+			},
+			{
+				__address__  = argument.inference_target.value,
+				__tmp_enable = argument.enabled.value,
+				job          = "integrations/ai/inference-latency",
+				metric_scope = "inference_latency",
+			},
+			{
+				__address__  = argument.token_target.value,
+				__tmp_enable = argument.enabled.value,
+				job          = "integrations/ai/token-generation",
+				metric_scope = "token_generation",
+			},
+			{
+				__address__  = argument.llm_api_target.value,
+				__tmp_enable = argument.enabled.value,
+				job          = "integrations/ai/llm-api",
+				metric_scope = "llm_api",
+			},
+		]
+
+		rule {
+			action        = "keep"
+			source_labels = ["__tmp_enable"]
+			regex         = "true"
+		}
+	}
+
+	prometheus.scrape "ai_targets" {
+		targets = discovery.relabel.ai_targets.output
+
+		scrape_interval = argument.scrape_interval.value
+		scrape_timeout  = argument.scrape_timeout.value
+
+		forward_to = [prometheus.relabel.ai_targets.receiver]
+	}
+
+	prometheus.relabel "ai_targets" {
+		forward_to = argument.forward_to.value
+
+		rule {
+			action        = "keep"
+			source_labels = ["__name__"]
+			regex         = "(DCGM_FI_DEV_GPU_UTIL|DCGM_FI_DEV_MEM_COPY_UTIL|DCGM_FI_DEV_MEMORY_TEMP|DCGM_FI_DEV_GPU_TEMP|llm_inference_latency_seconds.*|llm_tokens_generated_total|probe_success|up)"
+		}
+	}
+}

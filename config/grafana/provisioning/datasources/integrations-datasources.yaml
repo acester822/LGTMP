@@ -1,0 +1,41 @@
+apiVersion: 1
+
+datasources:
+  - name: NTOPNG Metrics
+    type: prometheus
+    uid: ntopng-metrics
+    access: proxy
+    orgId: 1
+    url: http://gateway:8080/prometheus
+    basicAuth: false
+    isDefault: false
+    editable: true
+    jsonData:
+      prometheusType: Mimir
+      httpMethod: POST
+
+  - name: AI Metrics
+    type: prometheus
+    uid: ai-metrics
+    access: proxy
+    orgId: 1
+    url: http://gateway:8080/prometheus
+    basicAuth: false
+    isDefault: false
+    editable: true
+    jsonData:
+      prometheusType: Mimir
+      httpMethod: POST
+
+  - name: OPNsense Metrics
+    type: prometheus
+    uid: opnsense-metrics
+    access: proxy
+    orgId: 1
+    url: http://gateway:8080/prometheus
+    basicAuth: false
+    isDefault: false
+    editable: true
+    jsonData:
+      prometheusType: Mimir
+      httpMethod: POST

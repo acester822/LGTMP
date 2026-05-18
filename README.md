@@ -5,13 +5,17 @@
 ![Diagram showing the flow of metrics](flow.png)
 
 > **NOTE**:
-> As of 6/18/2024
+> As of 5/18/2026
 > 
 > This has progressed into its own unique beast. I have not seen an alloy before on github that can do all of the things this one can. 
 
 ## Done / System Setup
 
 - [x] Windows Metrics and Logs
+- [x] Core stack images updated to current stable tags (Alloy, Loki, Tempo, Mimir, Pyroscope, Grafana, Nginx, MinIO) ✅ 2026-05-18
+- [x] ntopng service integrated with Alloy scrape labels + nginx gateway route ✅ 2026-05-18
+- [x] AI monitoring module and GPU exporter service profile (`gpu`) added ✅ 2026-05-18
+- [x] OPNsense monitoring module and sample Grafana dashboard added ✅ 2026-05-18
 - [x] Dashboard updates, most dashboards are fully functional now, this will depend on your variables and names of course ✅ 2024-06-18
 - [x] Identified how to get loki to parse logs properly. The only issue is they vary so greatly from app to app it requires custom regex, for example I now can parse arr logs (lidarr, radarr, etc). ✅ 2024-06-18
 - [x] Integrate new [Explore Logs](https://github.com/grafana/explore-logs) / [Grafana 11 Preview](https://grafana.com/docs/grafana/latest/whatsnew/whats-new-in-v11-0/) ✅ 2024-06-18
@@ -32,6 +36,8 @@
 
 ## Still To Do
 
+- [ ] Tune AI and OPNsense sample dashboards for local metric names
+- [ ] Add a hardened production auth layer for ntopng/OPNsense endpoints
 - [ ] Update this readme / howto, there are soooooo many variables, that explaining how it works can be tough
 - [ ] Further refine Alloy to label properly, drop what it doesn't need, etc
 - [ ] Further refine the "module" philosophy of Alloy, I want to make it so simple that someone could download this, and with a few clicks be up and running with what they need
@@ -64,6 +70,12 @@ git clone https://github.com/acester822/LGTMP.git
 docker compose up
 ```
 
+To include NVIDIA GPU metrics with DCGM exporter:
+
+```shell
+docker compose --profile gpu up
+```
+
 Grafana LGTMP Stack default port-mapping
 
 | Port-mapping                  | Component     | Description                                                                                                 |
@@ -75,6 +87,47 @@ Grafana LGTMP Stack default port-mapping
 | `38080:8080`                    | [Mimir](https://github.com/grafana/mimir)         | Expose `38080` port so we can directly access `mimir` inside container                                          |
 | `34040:4040`                    | [Pyroscope](https://github.com/grafana/pyroscope)     | Expose `34040` port so we can directly access `pyroscope` inside container                                      |
 | `9001:9001`, `9000`               | [Minio](https://github.com/minio/minio)         | Expose `9001` port so we can access `minio` console with `MINIO_ROOT_USER=lgtmp`, `MINIO_ROOT_PASSWORD=supersecret` |
+| `3001:3000`                    | [ntopng](https://github.com/ntop/ntopng)         | Expose `3001` for ntopng UI via nginx gateway routing |
+| `9400:9400`                    | [NVIDIA DCGM Exporter](https://github.com/NVIDIA/dcgm-exporter)         | GPU telemetry endpoint (enabled with `--profile gpu`) |
+
+## ntopng setup
+
+1. Start stack normally with `docker compose up`.
+2. Open ntopng at `http://localhost:3001`.
+3. Persisted data is stored in docker volume `ntopng_data`.
+4. Alloy scrapes ntopng metrics from `ntopng:3000/metrics` (override with `NTOPNG_METRICS_TARGET` and `NTOPNG_METRICS_PATH`).
+
+## AI / LLM monitoring setup
+
+1. Enable AI scraping in Alloy:
+   - `AI_MONITORING_ENABLED=true`
+2. Optional GPU metrics:
+   - Run stack with `--profile gpu` to start `dcgm-exporter`.
+3. Set endpoint targets as needed:
+   - `DCGM_EXPORTER_TARGET=dcgm-exporter:9400`
+   - `AI_INFERENCE_METRICS_TARGET=<host:port>`
+   - `AI_TOKEN_METRICS_TARGET=<host:port>`
+   - `LLM_API_METRICS_TARGET=<host:port>`
+4. Example envs: `config/alloy/modules/integrations/examples/ai-monitoring-example.alloy`
+
+### AI framework examples
+
+- OpenAI API: export latency and token counters through your app Prometheus endpoint and set `AI_INFERENCE_METRICS_TARGET`.
+- LangChain: enable callback/telemetry exporter, then scrape app endpoint with `AI_TOKEN_METRICS_TARGET`.
+- LlamaIndex: expose query latency + token metrics from app Prometheus middleware.
+- Ollama: scrape Ollama-compatible metrics endpoint via `LLM_API_METRICS_TARGET`.
+
+## OPNsense integration setup
+
+1. Enable Prometheus exporter plugin in OPNsense and expose metrics endpoint.
+2. Enable Alloy module:
+   - `OPNSENSE_MONITORING_ENABLED=true`
+3. Set exporter endpoint:
+   - `OPNSENSE_METRICS_TARGET=<opnsense-host:port>`
+   - `OPNSENSE_METRICS_PATH=/metrics` (or custom path)
+4. Example envs: `config/alloy/modules/integrations/examples/opnsense-example.alloy`
+
+The OPNsense sample dashboard includes firewall rules metrics, traffic, gateway status, and system health panels.
 
 ## Helpful Links
 

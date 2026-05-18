@@ -16,6 +16,7 @@ volumes:
   minio_data:
   inbucket_data:
   dashboards_data:
+  ntopng_data:
 
 x-labels: &profiles-labels
   profiles.grafana.com/cpu.scrape: true
@@ -39,7 +40,7 @@ services:
     labels:
       logs.grafana.com/log-format: logfmt
     depends_on: { gateway: { condition: service_healthy } }
-    image: ${ALLOY_IMAGE:-docker.io/grafana/alloy:v1.9.2}
+    image: ${ALLOY_IMAGE:-docker.io/grafana/alloy:v1.16.1}
     configs:
       - source: alloy_config_file
         target: /etc/alloy/config.alloy
@@ -94,7 +95,7 @@ services:
         condition: service_started
       pyroscope:
         condition: service_healthy    
-    image: ${NGINX_IMAGE:-docker.io/nginxinc/nginx-unprivileged:1.27-alpine}
+    image: ${NGINX_IMAGE:-docker.io/nginxinc/nginx-unprivileged:1.31-alpine}
     restart: always
     volumes:
       - ./config/nginx/10-default-lgtmp.envsh:/docker-entrypoint.d/10-default-lgtmp.envsh
@@ -103,6 +104,7 @@ services:
       - ./config/tempo/gateway_tempo.conf:/etc/nginx/templates/gateway_tempo.conf.template
       - ./config/mimir/gateway_mimir.conf:/etc/nginx/templates/gateway_mimir.conf.template
       - ./config/pyroscope/gateway_pyroscope.conf:/etc/nginx/templates/gateway_pyroscope.conf.template
+      - ./config/ntopng/gateway_ntopng.conf:/etc/nginx/templates/gateway_ntopng.conf.template
     healthcheck:
       test: [ "CMD", "/usr/bin/wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/" ]
       interval: 3s
@@ -118,7 +120,7 @@ services:
       profiles.grafana.com/service_name: loki
       logs.grafana.com/log-format: logfmt
     depends_on: { minio: { condition: service_healthy } }
-    image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.5.1}
+    image: ${LOKI_IMAGE:-docker.io/grafana/loki:3.7.2}
     configs:
       - source: loki_config_file
         target: /etc/loki/config.yaml
@@ -152,7 +154,7 @@ services:
       profiles.grafana.com/service_name: tempo
       
     depends_on: {minio: {condition: service_healthy}}
-    image: ${TEMPO_IMAGE:-docker.io/grafana/tempo:2.8.1}
+    image: ${TEMPO_IMAGE:-docker.io/grafana/tempo:2.10.5}
     configs:
       - source: tempo_config_file
         target: /etc/tempo/config.yaml
@@ -179,7 +181,7 @@ services:
       profiles.grafana.com/service_name: mimir
       logs.grafana.com/log-format: logfmt
     depends_on: { minio: { condition: service_healthy } }
-    image: ${MIMIR_IMAGE:-docker.io/grafana/mimir:2.16.1}
+    image: ${MIMIR_IMAGE:-docker.io/grafana/mimir:3.0.6}
     configs:
       - source: mimir_config_file
         target: /etc/mimir/config.yaml
@@ -202,7 +204,7 @@ services:
       metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: pyroscope
     depends_on: { minio: { condition: service_healthy } }
-    image: ${PYROSCOPE_IMAGE:-docker.io/grafana/pyroscope:1.14.0}
+    image: ${PYROSCOPE_IMAGE:-docker.io/grafana/pyroscope:2.0.2}
     configs:
       - source: pyroscope_config_file
         target: /etc/pyroscope/config.yaml
@@ -232,7 +234,7 @@ services:
       metrics.grafana.com/port: 9000
       metrics.grafana.com/interval: 15s
       metrics.grafana.com/timeout: 10s
-    image: ${MINIO_IMAGE:-docker.io/minio/minio:RELEASE.2024-12-18T13-15-44Z}
+    image: ${MINIO_IMAGE:-docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z}
     entrypoint:
       - sh
       - -euc
@@ -275,7 +277,7 @@ services:
   grafana:
     labels:
       metrics.grafana.com/scrape: true
-    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:12.0.2}
+    image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:13.0.1}
     command:
       - --config=/etc/grafana-config/grafana.ini
     volumes:
@@ -328,3 +330,48 @@ services:
     labels:
       metrics.grafana.com/scrape: true
     image: ${MEMCACHED_IMAGE:-docker.io/memcached:1.6.34-alpine}
+
+  ntopng:
+    labels:
+      metrics.grafana.com/scrape: true
+      metrics.grafana.com/path: /metrics
+      metrics.grafana.com/port: 3000
+      metrics.grafana.com/job: "monitoring-system/ntopng"
+      logs.grafana.com/log-format: logfmt
+    image: ${NTOPNG_IMAGE:-docker.io/ntop/ntopng:stable}
+    command:
+      - /usr/bin/ntopng
+      - --community
+      - --interface=${NTOPNG_INTERFACE:-eth0}
+      - --http-port=3000
+      - --http-address=0.0.0.0
+      - --enable-prometheus-exporter
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ntopng_data:/var/lib/ntopng
+    ports:
+      - "3001:3000"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  dcgm-exporter:
+    labels:
+      metrics.grafana.com/scrape: true
+      metrics.grafana.com/job: "monitoring-system/dcgm-exporter"
+      metrics.grafana.com/port: 9400
+      metrics.grafana.com/path: /metrics
+    image: ${DCGM_EXPORTER_IMAGE:-nvcr.io/nvidia/k8s/dcgm-exporter:4.4.0-4.6.1-ubuntu22.04}
+    profiles:
+      - gpu
+    ports:
+      - "9400:9400"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9400/metrics || exit 1" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10

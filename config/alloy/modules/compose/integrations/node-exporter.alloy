@@ -38,12 +38,14 @@ declare "component_node_exporter" {
 		rootfs_path    = "/rootfs"
 		udev_data_path = "/run/udev/data"
 
-	  enable_collectors = [
+  enable_collectors = [
     "processes",
     "perf",
 	"pressure",
     "mountstats",
     "devstat",
+    "drm",
+    "hwmon",
     "sysctl",
     "systemd",
   ]

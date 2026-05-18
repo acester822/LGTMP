@@ -1,0 +1,43 @@
+declare "component_ntopng" {
+	argument "forward_to" {
+		comment = "Must be a list(MetricsReceiver) where collected metrics should be forwarded to"
+	}
+
+	argument "scrape_interval" {
+		optional = true
+		default  = "30s"
+	}
+
+	argument "scrape_timeout" {
+		optional = true
+		default  = "10s"
+	}
+
+	argument "target" {
+		optional = true
+		default  = coalesce(sys.env("NTOPNG_METRICS_TARGET"), "ntopng:3000")
+	}
+
+	argument "metrics_path" {
+		optional = true
+		default  = coalesce(sys.env("NTOPNG_METRICS_PATH"), "/metrics")
+	}
+
+	prometheus.scrape "ntopng" {
+		targets = [{
+			__address__ = argument.target.value,
+			job         = "integrations/network/ntopng",
+		}]
+
+		metrics_path = argument.metrics_path.value
+
+		scrape_interval = argument.scrape_interval.value
+		scrape_timeout  = argument.scrape_timeout.value
+
+		forward_to = [prometheus.relabel.ntopng.receiver]
+	}
+
+	prometheus.relabel "ntopng" {
+		forward_to = argument.forward_to.value
+	}
+}

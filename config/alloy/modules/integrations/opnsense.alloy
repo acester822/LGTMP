@@ -1,0 +1,65 @@
+declare "component_opnsense" {
+	argument "forward_to" {
+		comment = "Must be a list(MetricsReceiver) where collected metrics should be forwarded to"
+	}
+
+	argument "scrape_interval" {
+		optional = true
+		default  = "30s"
+	}
+
+	argument "scrape_timeout" {
+		optional = true
+		default  = "10s"
+	}
+
+	argument "enabled" {
+		optional = true
+		default  = coalesce(sys.env("OPNSENSE_MONITORING_ENABLED"), "false")
+	}
+
+	argument "target" {
+		optional = true
+		default  = coalesce(sys.env("OPNSENSE_METRICS_TARGET"), "opnsense:9100")
+	}
+
+	argument "metrics_path" {
+		optional = true
+		default  = coalesce(sys.env("OPNSENSE_METRICS_PATH"), "/metrics")
+	}
+
+	discovery.relabel "opnsense_target" {
+		targets = [{
+			__address__  = argument.target.value,
+			__tmp_enable = argument.enabled.value,
+			job          = "integrations/network/opnsense",
+		}]
+
+		rule {
+			action        = "keep"
+			source_labels = ["__tmp_enable"]
+			regex         = "true"
+		}
+	}
+
+	prometheus.scrape "opnsense_target" {
+		targets = discovery.relabel.opnsense_target.output
+
+		metrics_path = argument.metrics_path.value
+
+		scrape_interval = argument.scrape_interval.value
+		scrape_timeout  = argument.scrape_timeout.value
+
+		forward_to = [prometheus.relabel.opnsense_target.receiver]
+	}
+
+	prometheus.relabel "opnsense_target" {
+		forward_to = argument.forward_to.value
+
+		rule {
+			action        = "keep"
+			source_labels = ["__name__"]
+			regex         = "(opnsense_firewall_.*|opnsense_traffic_.*|opnsense_gateway_.*|opnsense_system_.*|up)"
+		}
+	}
+}
