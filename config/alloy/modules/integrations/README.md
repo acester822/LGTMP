@@ -1,6 +1,6 @@
 # Alloy Integrations Modules
 
-This directory contains optional integrations loaded from `/home/runner/work/LGTMP/LGTMP/config/alloy/master.alloy`.
+This directory contains optional integrations loaded from `config/alloy/master.alloy`.
 
 ## Included modules
 
@@ -20,5 +20,5 @@ Both are disabled by default for backward compatibility:
 
 ## Example configs
 
-- `/home/runner/work/LGTMP/LGTMP/config/alloy/modules/integrations/examples/ai-monitoring-example.alloy`
-- `/home/runner/work/LGTMP/LGTMP/config/alloy/modules/integrations/examples/opnsense-example.alloy`
+- `config/alloy/modules/integrations/examples/ai-monitoring-example.alloy`
+- `config/alloy/modules/integrations/examples/opnsense-example.alloy`

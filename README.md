@@ -108,7 +108,7 @@ Grafana LGTMP Stack default port-mapping
    - `AI_INFERENCE_METRICS_TARGET=<host:port>`
    - `AI_TOKEN_METRICS_TARGET=<host:port>`
    - `LLM_API_METRICS_TARGET=<host:port>`
-4. Example envs: `/home/runner/work/LGTMP/LGTMP/config/alloy/modules/integrations/examples/ai-monitoring-example.alloy`
+4. Example envs: `config/alloy/modules/integrations/examples/ai-monitoring-example.alloy`
 
 ### AI framework examples
 
@@ -125,7 +125,7 @@ Grafana LGTMP Stack default port-mapping
 3. Set exporter endpoint:
    - `OPNSENSE_METRICS_TARGET=<opnsense-host:port>`
    - `OPNSENSE_METRICS_PATH=/metrics` (or custom path)
-4. Example envs: `/home/runner/work/LGTMP/LGTMP/config/alloy/modules/integrations/examples/opnsense-example.alloy`
+4. Example envs: `config/alloy/modules/integrations/examples/opnsense-example.alloy`
 
 The OPNsense sample dashboard includes firewall rules metrics, traffic, gateway status, and system health panels.
 
