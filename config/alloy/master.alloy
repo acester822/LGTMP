@@ -41,6 +41,25 @@ metrics.integrations_scrape "compose" {
 	scrape_interval = "15s"
 }
 
+import.file "integrations" {
+	filename = coalesce(sys.env("ALLOY_MODULES_FOLDER"), "/etc/alloy/modules") + "/integrations"
+}
+
+integrations.component_ntopng "default" {
+	forward_to      = [provider.self_hosted_stack.compose.metrics_receiver]
+	scrape_interval = "30s"
+}
+
+integrations.component_ai_monitoring "default" {
+	forward_to      = [provider.self_hosted_stack.compose.metrics_receiver]
+	scrape_interval = "15s"
+}
+
+integrations.component_opnsense "default" {
+	forward_to      = [provider.self_hosted_stack.compose.metrics_receiver]
+	scrape_interval = "30s"
+}
+
 /********************************************
  * Logs
  ********************************************/
