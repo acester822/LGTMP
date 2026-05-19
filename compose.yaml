@@ -301,7 +301,7 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
     ports:
-      - "3000:3000"
+      - "3001:3000"
 
   mimirtool:
     # https://github.com/qclaogui/codelab-monitoring/blob/main/alloy-modules/compose/README.md
@@ -335,7 +335,7 @@ services:
     labels:
       metrics.grafana.com/scrape: true
       metrics.grafana.com/path: /metrics
-      metrics.grafana.com/port: 3000
+      metrics.grafana.com/port: 3002
       metrics.grafana.com/job: "monitoring-system/ntopng"
       logs.grafana.com/log-format: logfmt
     image: ${NTOPNG_IMAGE:-docker.io/ntop/ntopng:stable}
@@ -343,7 +343,7 @@ services:
       - /usr/bin/ntopng
       - --community
       - --interface=${NTOPNG_INTERFACE:-eth0}
-      - --http-port=3000
+      - --http-port=3002
       - --http-address=0.0.0.0
       - --enable-prometheus-exporter
     cap_add:
@@ -352,9 +352,9 @@ services:
     volumes:
       - ntopng_data:/var/lib/ntopng
     ports:
-      - "3001:3000"
+      - "3002:3002"
     healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1" ]
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3002/ || exit 1" ]
       interval: 10s
       timeout: 3s
       retries: 10
