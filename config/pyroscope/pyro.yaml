@@ -4,7 +4,6 @@ analytics:
 
 tracing:
   enabled: true
-  profiling_enabled: true
 
 show_banner: false
 

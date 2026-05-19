@@ -1,0 +1,20 @@
+// Import all integration components for Alloy
+import.file "cadvisor" {
+	filename = coalesce(sys.env("ALLOY_MODULES_FOLDER"), "/etc/alloy/modules") + "/compose/integrations/cadvisor.alloy"
+}
+
+import.file "node-exporter" {
+	filename = coalesce(sys.env("ALLOY_MODULES_FOLDER"), "/etc/alloy/modules") + "/compose/integrations/node-exporter.alloy"
+}
+
+import.file "memcached" {
+	filename = coalesce(sys.env("ALLOY_MODULES_FOLDER"), "/etc/alloy/modules") + "/compose/integrations/memcached.alloy"
+}
+
+import.file "process-exporter" {
+	filename = coalesce(sys.env("ALLOY_MODULES_FOLDER"), "/etc/alloy/modules") + "/compose/integrations/process-exporter.alloy"
+}
+
+import.file "alloy" {
+	filename = coalesce(sys.env("ALLOY_MODULES_FOLDER"), "/etc/alloy/modules") + "/compose/integrations/alloy.alloy"
+}

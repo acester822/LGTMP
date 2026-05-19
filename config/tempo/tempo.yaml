@@ -1,8 +1,6 @@
 # For more information on this configuration, see the complete reference guide at
 # https://grafana.com/docs/tempo/latest/configuration/
 
-stream_over_http_enabled: true
-
 multitenancy_enabled: true
 usage_report:
   reporting_enabled: false
