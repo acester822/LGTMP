@@ -73,6 +73,8 @@ services:
     environment:
       - ALLOY_MODULES_FOLDER=/etc/alloy/modules
       - ALLOY_LOG_LEVEL=warn
+      - GRAFANA_CLOUD_STACK_NAME=${GRAFANA_CLOUD_STACK_NAME}
+      - GRAFANA_CLOUD_TOKEN=${GRAFANA_CLOUD_TOKEN}
     ports:
       - "12345:12345"
       # - "12345-12348:12345" # Note: max replicas num is 3.
@@ -266,6 +268,7 @@ services:
   inbucket:
     labels:
       metrics.grafana.com/scrape: true
+      metrics.grafana.com/port: "9000"
     image: ${INBUCKET_IMAGE:-inbucket/inbucket:3.0.4}
     ports:
       - 2500 # SMTP
@@ -315,6 +318,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_RENDERING_SERVER_URL: http://grafana-image-renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
+      GF_RENDERING_RENDERER_TOKEN: ${GF_RENDERING_RENDERER_TOKEN:-24ddd580a7e7cbb4cec5c388da952f9b4b75d25d897fdf5e28fe52c5d76821cc}
     ports:
       - "3001:3000"
 
@@ -348,17 +352,23 @@ services:
 
   ntopng:
     labels:
-      metrics.grafana.com/scrape: "false"
+      metrics.grafana.com/scrape: true
+      metrics.grafana.com/path: /metrics
+      metrics.grafana.com/port: 3000
+      metrics.grafana.com/job: "monitoring-system/ntopng"
       logs.grafana.com/log-format: logfmt
     image: ${NTOPNG_IMAGE:-docker.io/ntop/ntopng:latest}
     command:
-      - /etc/ntopng/ntopng.conf
+      - /usr/bin/ntopng
+      - --community
       - --interface=${NTOPNG_INTERFACE:-eth0}
+      - --http-port=3002
+      - --http-address=0.0.0.0
+      - --enable-prometheus-exporter
     cap_add:
       - NET_ADMIN
       - NET_RAW
     volumes:
-      - ./config/ntopng/ntopng.conf:/etc/ntopng/ntopng.conf:ro
       - ntopng_data:/var/lib/ntopng
     ports:
       - "3002:3002"
@@ -368,21 +378,15 @@ services:
       timeout: 3s
       retries: 10
 
-  ntopng-exporter:
-    labels:
-      metrics.grafana.com/scrape: "true"
-      metrics.grafana.com/job: "monitoring-system/ntopng"
-      metrics.grafana.com/port: "7979"
-    image: prometheuscommunity/json-exporter:latest
-    command:
-      - --config.file=/etc/json_exporter/config.yaml
-    volumes:
-      - ./config/ntopng/json_exporter.yaml:/etc/json_exporter/config.yaml:ro
+  grafana-mcp:
+    image: ${GRAFANA_MCP_IMAGE:-docker.io/grafana/mcp-grafana:latest}
+    command: ["-t", "streamable-http"]
+    environment:
+      - GRAFANA_URL=http://lgtmp-grafana-1:3000
+      - GRAFANA_SERVICE_ACCOUNT_TOKEN=${GRAFANA_SERVICE_ACCOUNT_TOKEN}
     ports:
-      - "7979:7979"
-    depends_on:
-      ntopng:
-        condition: service_healthy
+      - "8000:8000"
+    restart: unless-stopped
 
   dcgm-exporter:
     labels:

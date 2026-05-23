@@ -13,25 +13,23 @@ declare "component_ntopng" {
 		default  = "10s"
 	}
 
-	argument "exporter_target" {
+	argument "target" {
 		optional = true
-		default  = coalesce(sys.env("NTOPNG_EXPORTER_TARGET"), "ntopng-exporter:7979")
+		default  = coalesce(sys.env("NTOPNG_METRICS_TARGET"), "ntopng:3002")
 	}
 
-	argument "ntopng_url" {
+	argument "metrics_path" {
 		optional = true
-		default  = coalesce(sys.env("NTOPNG_URL"), "http://ntopng:3002/lua/rest/v2/get/interface/data.lua?ifid=0")
+		default  = coalesce(sys.env("NTOPNG_METRICS_PATH"), "/metrics")
 	}
 
 	prometheus.scrape "ntopng" {
 		targets = [{
-			__address__ = argument.exporter_target.value,
-			__param_target = argument.ntopng_url.value,
-			__param_module = "default",
-			job             = "integrations/network/ntopng",
+			__address__ = argument.target.value,
+			job         = "integrations/network/ntopng",
 		}]
 
-		metrics_path = "/probe"
+		metrics_path = argument.metrics_path.value
 
 		scrape_interval = argument.scrape_interval.value
 		scrape_timeout  = argument.scrape_timeout.value

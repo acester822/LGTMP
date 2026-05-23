@@ -7,9 +7,9 @@ usage_stats:
   enabled: false
 
 server:
+  log_level: info
   http_listen_port: 8080
   grpc_listen_port: 9095
-  log_level: info
 
 common:
   storage:
