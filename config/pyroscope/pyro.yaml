@@ -2,6 +2,9 @@ multitenancy_enabled: false
 analytics:
   reporting_enabled: false
 
+server:
+  log_level: warn
+
 tracing:
   enabled: true
   profiling_enabled: true

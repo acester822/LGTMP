@@ -1,0 +1,78 @@
+name: Render dashboard previews
+
+on:
+  push:
+    paths:
+      - 'dashboards/**/*.json'
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Render PNGs for changed dashboards
+        env:
+          GRAFANA_URL: https://grafana.ftr10.dev
+          GRAFANA_TOKEN: ${{ secrets.GRAFANA_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          before="${{ github.event.before }}"
+          after="${{ github.sha }}"
+
+          if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ]; then
+            git diff --name-only "$before" "$after" -- '*.json' > changed_files.txt || true
+          elif git rev-parse HEAD^ >/dev/null 2>&1; then
+            git diff --name-only HEAD^ HEAD -- '*.json' > changed_files.txt || true
+          else
+            echo "No previous commit available; nothing to diff."
+            exit 0
+          fi
+
+          if [ ! -s changed_files.txt ]; then
+            echo "No changed JSON files found."
+            exit 0
+          fi
+
+          while IFS= read -r file; do
+            [ -f "$file" ] || continue
+
+            uid=$(jq -r '.uid // empty' "$file")
+            dir=$(dirname "$file")
+
+            if [ -z "$uid" ]; then
+              echo "Skipping $file because .uid is missing"
+              continue
+            fi
+
+            echo "Rendering $uid from $file"
+            if ! curl -sf \
+              -H "Authorization: Bearer $GRAFANA_TOKEN" \
+              "$GRAFANA_URL/render/d/${uid}?width=1400&height=900&kiosk=tv" \
+              -o "${dir}/${uid}.png"; then
+              echo "Failed to render dashboard $uid from $file"
+            fi
+          done < changed_files.txt
+
+      - name: Commit PNGs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          find . -type f -name '*.png' -print0 | xargs -0 -r git add
+
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update dashboard previews"
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "No PNG changes to commit."
+          fi

@@ -10,32 +10,26 @@ configs:
     file: ./config/mimir/mimir.yaml
   pyroscope_config_file:
     file: ./config/pyroscope/pyro.yaml
-
 volumes:
   pyroscope_data:
   minio_data:
   inbucket_data:
   dashboards_data:
   ntopng_data:
-
 x-labels: &profiles-labels
   profiles.grafana.com/cpu.scrape: true
   profiles.grafana.com/memory.scrape: true
   profiles.grafana.com/goroutine.scrape: true
-
 x-environment: &jaeger-environment
   JAEGER_AGENT_HOST: alloy
   JAEGER_AGENT_PORT: 6831
   JAEGER_SAMPLER_TYPE: const
   JAEGER_SAMPLER_PARAM: 1
-
 x-healthcheck: &status-healthcheck
   interval: 3s
   timeout: 1s
   retries: 15
-
 services:
-
   alloy:
     labels:
       logs.grafana.com/log-format: logfmt
@@ -84,7 +78,6 @@ services:
       default:
         aliases:
           - alloy-cluster
-
   gateway:
     labels:
       metrics.grafana.com/scrape: true
@@ -113,7 +106,6 @@ services:
       interval: 3s
       timeout: 1s
       retries: 20
-
   loki:
     labels:
       <<: *profiles-labels
@@ -149,13 +141,11 @@ services:
       default:
         aliases:
           - loki-memberlist
-
   tempo:
     labels:
       <<: *profiles-labels
       metrics.grafana.com/scrape: true
       profiles.grafana.com/service_name: tempo
-      
     depends_on: {minio: {condition: service_healthy}}
     image: ${TEMPO_IMAGE:-docker.io/grafana/tempo:2.10.5}
     configs:
@@ -176,7 +166,6 @@ services:
     # expose 33200 port so we can directly access tempo inside container
     ports:
       - "33200:3200"
-
   mimir:
     labels:
       <<: *profiles-labels
@@ -201,7 +190,6 @@ services:
       default:
         aliases:
           - mimir-memberlist
-
   pyroscope:
     labels:
       metrics.grafana.com/scrape: true
@@ -226,7 +214,6 @@ services:
     # expose 34040 port so we can directly access pyroscope inside container
     ports:
       - "34040:4040"
-
   minio:
     # https://github.com/qclaogui/codelab-monitoring/blob/main/alloy-modules/compose/README.md
     labels:
@@ -264,20 +251,6 @@ services:
       retries: 15
     ports:
       - "9001:9001"
-
-  inbucket:
-    labels:
-      metrics.grafana.com/scrape: true
-      metrics.grafana.com/port: "9000"
-    image: ${INBUCKET_IMAGE:-inbucket/inbucket:3.0.4}
-    ports:
-      - 2500 # SMTP
-      - "39000:9000" # HTTP
-      - 1100 # POP3
-    volumes:
-      - inbucket_data:/storage
-      - inbucket_data:/config
-
   grafana-image-renderer:
     image: ${GRAFANA_IMAGE_RENDERER_IMAGE:-docker.io/grafana/grafana-image-renderer:latest}
     restart: always
@@ -288,40 +261,32 @@ services:
           memory: 8G
           cpus: "4"
     environment:
-      - AUTH_TOKEN=-
-
+      - AUTH_TOKEN=my-secret-token
   grafana:
     labels:
       metrics.grafana.com/scrape: true
     image: ${GRAFANA_IMAGE:-docker.io/grafana/grafana:13.0.1}
+    entrypoint:
+      - /bin/sh
+      - /docker-entrypoint.sh
     command:
       - --config=/etc/grafana-config/grafana.ini
     volumes:
       - ./config/grafana/grafana.ini:/etc/grafana-config/grafana.ini
+      - ./config/grafana/docker-entrypoint.sh:/docker-entrypoint.sh:ro
       - dashboards_data:/var/lib/grafana/dashboards
       - ./config/grafana/provisioning:/etc/grafana/provisioning
-        #- ./config/grafana/provisioning/datasources/redis.yaml:/etc/grafana/provisioning/datasources/redis.yaml
-        #- ./config/grafana/provisioning/plugins/grafana-lokiexplore-app.yaml:/etc/grafana/provisioning/plugins/grafana-lokiexplore-app.yaml
-        #- ./config/grafana/provisioning/plugins/grafana-oncall-app.yaml:/etc/grafana/provisioning/plugins/grafana-oncall-app.yaml
-        #- ./config/grafana/provisioning/plugins/redis-app.yaml:/etc/grafana/provisioning/plugins/redis-app.yaml
       - ./config/grafana/provisioning/dashboards/:/var/lib/grafana/dashboards/
     environment:
-      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor tracesEmbeddedFlameGraph traceqlSearch correlations metricsSummary traceToMetrics traceToProfiles traceToProfiles
-        # add to toggles for oncall > accessControlOnCall
-       #GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-lokiexplore-app
-        # add to plugins for oncall > grafana-oncall-app
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor tracesEmbeddedFlameGraph traceqlSearch correlations metricsSummary traceToMetrics traceToProfiles
       GF_SMTP_ENABLED: true
-      GF_SMTP_HOST: inbucket:2500
-        #GF_INSTALL_PLUGINS: https://storage.googleapis.com/integration-artifacts/grafana-lokiexplore-app/grafana-lokiexplore-app-latest.zip;grafana-lokiexplore-app,
-        #add to plugins if you want oncall > grafana-oncall-app v1.4.0, redis-app v2.2.1
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SERVER_ROOT_URL: https://grafana.ftr10.dev
       GF_RENDERING_SERVER_URL: http://grafana-image-renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
-      GF_RENDERING_RENDERER_TOKEN: ${GF_RENDERING_RENDERER_TOKEN:-24ddd580a7e7cbb4cec5c388da952f9b4b75d25d897fdf5e28fe52c5d76821cc}
     ports:
       - "3001:3000"
-
   mimirtool:
     # https://github.com/qclaogui/codelab-monitoring/blob/main/alloy-modules/compose/README.md
     labels:
@@ -344,12 +309,10 @@ services:
       - MIMIR_TENANT_ID=anonymous
     command: >-
       rules load /rules/github-mixin-alerts.yaml /rules/github-mixin-rules.yaml /rules/alloy-mixin-alerts.yaml /rules/mimir-mixin-rules.yaml /rules/mimir-mixin-alerts.yaml /rules/tempo-mixin-alerts.yaml /rules/tempo-mixin-rules.yaml /rules/loki-mixin-rules.yaml /rules/loki-mixin-alerts.yaml /rules/memcached-mixin-alerts.yaml /rules/pyroscope-mixin-rules.yaml
-
   memcached:
     labels:
       metrics.grafana.com/scrape: true
     image: ${MEMCACHED_IMAGE:-docker.io/memcached:1.6.34-alpine}
-
   ntopng:
     labels:
       metrics.grafana.com/scrape: true
@@ -377,7 +340,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
-
   grafana-mcp:
     image: ${GRAFANA_MCP_IMAGE:-docker.io/grafana/mcp-grafana:latest}
     command: ["-t", "streamable-http"]
@@ -387,7 +349,6 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
-
   dcgm-exporter:
     labels:
       metrics.grafana.com/scrape: true
