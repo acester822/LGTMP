@@ -36,8 +36,6 @@ prometheus.relabel "integrations_alloy" {
   }
 }
 
-
-
 prometheus.exporter.windows "integrations_windows_exporter" {
   enabled_collectors = ["cpu", "cs", "logical_disk", "net", "os", "service", "system", "textfile", "time", "diskdrive", "process"]
 }
@@ -57,9 +55,10 @@ discovery.relabel "integrations_windows_exporter" {
 }
 
 prometheus.scrape "integrations_windows_exporter" {
-  targets    = discovery.relabel.integrations_windows_exporter.output
-  forward_to = [prometheus.relabel.integrations_windows_exporter.receiver]
-  job_name   = "integrations/windows_exporter"
+  targets         = discovery.relabel.integrations_windows_exporter.output
+  forward_to      = [prometheus.relabel.integrations_windows_exporter.receiver]
+  job_name        = "integrations/windows_exporter"
+  scrape_interval = "60s"
 }
 
 prometheus.relabel "integrations_windows_exporter" {
@@ -70,21 +69,110 @@ prometheus.relabel "integrations_windows_exporter" {
     regex         = "HarddiskVolume.*"
     action        = "drop"
   }
+}
 
-  /*rule {
-    action = "keep"
-    regex = "up|windows_cpu_interrupts_total|windows_cpu_time_total|windows_cs_hostname|windows_cs_logical_processors|windows_cs_physical_memory_bytes|windows_disk_drive_status|windows_logical_disk_avg_read_requests_queued|windows_logical_disk_avg_write_requests_queued|windows_logical_disk_free_bytes|windows_logical_disk_idle_seconds_total|windows_logical_disk_read_bytes_total|windows_logical_disk_read_seconds_total|windows_logical_disk_reads_total|windows_logical_disk_size_bytes|windows_logical_disk_write_bytes_total|windows_logical_disk_write_seconds_total|windows_logical_disk_writes_total|windows_net_bytes_received_total|windows_net_bytes_sent_total|windows_net_packets_outbound_discarded_total|windows_net_packets_outbound_errors_total|windows_net_packets_received_discarded_total|windows_net_packets_received_errors_total|windows_net_packets_received_unknown_total|windows_os_info|windows_os_paging_limit_bytes|windows_os_physical_memory_free_bytes|windows_os_timezone|windows_service_status|windows_system_context_switches_total|windows_system_processor_queue_length|windows_system_system_up_time|windows_time_computed_time_offset_seconds|windows_time_ntp_round_trip_delay_seconds"
+// NVIDIA GPU metrics via nvidia_gpu_exporter (Windows-compatible)
+// Install from: https://github.com/utkuozdemir/nvidia_gpu_exporter
+// Run as Windows service or standalone binary, exposes /metrics on port 9102 by default
+prometheus.scrape "integrations_nvidia_gpu" {
+  targets         = [{__address__ = "localhost:9102"}]
+  forward_to      = [prometheus.relabel.integrations_nvidia_gpu.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.relabel "integrations_nvidia_gpu" {
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/nvidia_gpu"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = constants.hostname
+  }
+
+  rule {
     source_labels = ["__name__"]
-  }*/
+    regex         = "(nvidia_smi_.*|nvidia_gpu_exporter_.*|up)"
+    action        = "keep"
+  }
+}
+
+// llama-server per-model metrics (local ports assigned by llama-swap)
+// always-on: 10001, main swap group cycles through 10002-10010
+prometheus.scrape "llama_server_local" {
+  targets = [
+    {__address__ = "localhost:10001"},
+    {__address__ = "localhost:10002"},
+    {__address__ = "localhost:10003"},
+    {__address__ = "localhost:10004"},
+    {__address__ = "localhost:10005"},
+    {__address__ = "localhost:10006"},
+    {__address__ = "localhost:10007"},
+    {__address__ = "localhost:10008"},
+    {__address__ = "localhost:10009"},
+    {__address__ = "localhost:10010"},
+  ]
+  forward_to      = [prometheus.relabel.llama_server_local.receiver]
+  scrape_interval = "15s"
+  scrape_timeout  = "5s"
+}
+
+prometheus.relabel "llama_server_local" {
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/llama-server"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = constants.hostname
+  }
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "(llamacpp:.*|llama_.*|up)"
+    action        = "keep"
+  }
+}
+
+// llama-swap metrics (remote target on zenbook)
+prometheus.scrape "llama_swap" {
+  targets         = [{__address__ = "100.87.47.78:8080"}]
+  forward_to      = [prometheus.relabel.llama_swap.receiver]
+  scrape_interval = "15s"
+  scrape_timeout  = "5s"
+}
+
+prometheus.relabel "llama_swap" {
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/llama-swap"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = constants.hostname
+  }
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "(up|process_.*|go_.*|http_.*|cuda_.*|nvml_.*|llama_.*|llm_.*|gpu_.*|promhttp_.*|alloy_build_.*|prometheus_.*|process_start_time_seconds)"
+    action        = "keep"
+  }
 }
 
 prometheus.remote_write "metrics_service" {
   endpoint {
-    url = "http://<ip_here>:38080/api/v1/push"
+    url = "http://100.65.230.106:38080/api/v1/push"
   }
 }
-
-
 
 loki.process "logs_integrations_windows_exporter_application" {
   forward_to = [loki.write.logs_service.receiver]
@@ -117,7 +205,7 @@ loki.source.windowsevent "logs_integrations_windows_exporter_application" {
   locale                 = 1033
   eventlog_name          = "Application"
   bookmark_path          = "./bookmarks-app.xml"
-  poll_interval          = "0s"
+  poll_interval          = "5s"
   use_incoming_timestamp = true
   forward_to             = [loki.relabel.logs_integrations_windows_exporter_application.receiver]
   labels                 = {
@@ -157,7 +245,7 @@ loki.source.windowsevent "logs_integrations_windows_exporter_system" {
   locale                 = 1033
   eventlog_name          = "System"
   bookmark_path          = "./bookmarks-sys.xml"
-  poll_interval          = "0s"
+  poll_interval          = "5s"
   use_incoming_timestamp = true
   forward_to             = [loki.relabel.logs_integrations_windows_exporter_system.receiver]
   labels                 = {
@@ -168,7 +256,6 @@ loki.source.windowsevent "logs_integrations_windows_exporter_system" {
 
 loki.write "logs_service" {
   endpoint {
-    url = "http://<ip_here>:33100/loki/api/v1/push"
+    url = "http://100.65.230.106:33100/loki/api/v1/push"
   }
 }
-

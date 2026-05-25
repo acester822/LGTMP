@@ -2,7 +2,7 @@
 // Load by setting these env vars in compose and enabling AI monitoring.
 //
 // AI_MONITORING_ENABLED=true
-// DCGM_EXPORTER_TARGET=dcgm-exporter:9400
-// AI_INFERENCE_METRICS_TARGET=ollama-exporter:8081
-// AI_TOKEN_METRICS_TARGET=llm-app:8080
-// LLM_API_METRICS_TARGET=llm-api-exporter:9090
+// DCGM_EXPORTER_TARGET=dcgm-exporter:9400          // Linux/Docker GPU monitoring (optional)
+// AI_INFERENCE_METRICS_TARGET=100.87.47.78:8080    // llama-swap inference metrics
+// AI_TOKEN_METRICS_TARGET=100.87.47.78:8080        // llama-swap token metrics (same as inference)
+// LLM_API_METRICS_TARGET=ollama:11434              // Optional separate LLM API target

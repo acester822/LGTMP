@@ -18,24 +18,28 @@ declare "component_ai_monitoring" {
 		default  = coalesce(sys.env("AI_MONITORING_ENABLED"), "false")
 	}
 
+	// DCGM exporter target (Linux/Docker GPU monitoring)
 	argument "dcgm_target" {
 		optional = true
 		default  = coalesce(sys.env("DCGM_EXPORTER_TARGET"), "dcgm-exporter:9400")
 	}
 
+	// llama-swap / inference server target (works for any remote host)
 	argument "inference_target" {
 		optional = true
-		default  = coalesce(sys.env("AI_INFERENCE_METRICS_TARGET"), "ai-inference:8000")
+		default  = coalesce(sys.env("AI_INFERENCE_METRICS_TARGET"), "100.87.47.78:8080")
 	}
 
+	// Token metrics target (same as inference if llama-swap exposes token metrics)
 	argument "token_target" {
 		optional = true
-		default  = coalesce(sys.env("AI_TOKEN_METRICS_TARGET"), "ai-inference:8000")
+		default  = coalesce(sys.env("AI_TOKEN_METRICS_TARGET"), "100.87.47.78:8080")
 	}
 
+	// LLM API target (e.g., ollama) - optional, use inference_target if not needed separately
 	argument "llm_api_target" {
 		optional = true
-		default  = coalesce(sys.env("LLM_API_METRICS_TARGET"), "ollama:11434")
+		default  = coalesce(sys.env("LLM_API_METRICS_TARGET"), "")
 	}
 
 	discovery.relabel "ai_targets" {
@@ -58,6 +62,19 @@ declare "component_ai_monitoring" {
 				job          = "integrations/ai/token-generation",
 				metric_scope = "token_generation",
 			},
+		]
+
+		// Only add llm_api target if it has a non-empty value
+		rule {
+			action        = "keep"
+			source_labels = ["__tmp_enable"]
+			regex         = "true"
+		}
+	}
+
+	// Separate relabel for llm_api target (optional)
+	discovery.relabel "llm_api_targets" {
+		targets = [
 			{
 				__address__  = argument.llm_api_target.value,
 				__tmp_enable = argument.enabled.value,
@@ -71,6 +88,12 @@ declare "component_ai_monitoring" {
 			source_labels = ["__tmp_enable"]
 			regex         = "true"
 		}
+
+		rule {
+			action        = "drop"
+			source_labels = ["__address__"]
+			regex         = "^$"
+		}
 	}
 
 	prometheus.scrape "ai_targets" {
@@ -82,13 +105,33 @@ declare "component_ai_monitoring" {
 		forward_to = [prometheus.relabel.ai_targets.receiver]
 	}
 
+	// Separate scrape for optional llm_api target
+	prometheus.scrape "llm_api_targets" {
+		targets = discovery.relabel.llm_api_targets.output
+
+		scrape_interval = argument.scrape_interval.value
+		scrape_timeout  = argument.scrape_timeout.value
+
+		forward_to = [prometheus.relabel.llm_api_targets.receiver]
+	}
+
 	prometheus.relabel "ai_targets" {
 		forward_to = argument.forward_to.value
 
 		rule {
 			action        = "keep"
 			source_labels = ["__name__"]
-			regex         = "(DCGM_FI_DEV_GPU_UTIL|DCGM_FI_DEV_MEM_COPY_UTIL|DCGM_FI_DEV_MEMORY_TEMP|DCGM_FI_DEV_GPU_TEMP|llm_inference_latency_seconds.*|llm_tokens_generated_total|probe_success|up)"
+			regex         = "(DCGM_FI_DEV_GPU_UTIL|DCGM_FI_DEV_MEM_COPY_UTIL|DCGM_FI_DEV_MEMORY_TEMP|DCGM_FI_DEV_GPU_TEMP|nvidia_gpu.*|nvml_.*|llm_inference_latency_seconds.*|llm_tokens_generated_total|llamaswap_.*|probe_success|up)"
+		}
+	}
+
+	prometheus.relabel "llm_api_targets" {
+		forward_to = argument.forward_to.value
+
+		rule {
+			action        = "keep"
+			source_labels = ["__name__"]
+			regex         = "(llm_inference_latency_seconds.*|llm_tokens_generated_total|probe_success|up)"
 		}
 	}
 }
