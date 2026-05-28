@@ -72,8 +72,12 @@ services:
       - AI_MONITORING_ENABLED=true
       - AI_INFERENCE_METRICS_TARGET=100.87.47.78:8080
       - AI_TOKEN_METRICS_TARGET=100.87.47.78:8080
+      - LLAMA_SERVER_HOST=100.87.47.78
+      - NTOPNG_METRICS_TARGET=${NTOPNG_METRICS_TARGET:-ntopng-exporter:9101}
     ports:
       - "12345:12345"
+      - "9999:9999"   # remote agent metrics receiver (prometheus.receive_http)
+      - "9998:9998"   # remote agent logs receiver    (loki.source.api)
       # - "12345-12348:12345" # Note: max replicas num is 3.
     deploy:
       replicas: 1
@@ -316,33 +320,6 @@ services:
     labels:
       metrics.grafana.com/scrape: true
     image: ${MEMCACHED_IMAGE:-docker.io/memcached:1.6.34-alpine}
-  ntopng:
-    labels:
-      metrics.grafana.com/scrape: true
-      metrics.grafana.com/path: /metrics
-      metrics.grafana.com/port: 3000
-      metrics.grafana.com/job: "monitoring-system/ntopng"
-      logs.grafana.com/log-format: logfmt
-    image: ${NTOPNG_IMAGE:-docker.io/ntop/ntopng:latest}
-    command:
-      - /usr/bin/ntopng
-      - --community
-      - --interface=${NTOPNG_INTERFACE:-eth0}
-      - --http-port=3002
-      - --http-address=0.0.0.0
-      - --enable-prometheus-exporter
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    volumes:
-      - ntopng_data:/var/lib/ntopng
-    ports:
-      - "3002:3002"
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3002/ || exit 1" ]
-      interval: 10s
-      timeout: 3s
-      retries: 10
   grafana-mcp:
     image: ${GRAFANA_MCP_IMAGE:-docker.io/grafana/mcp-grafana:latest}
     command: ["-t", "streamable-http"]
@@ -352,6 +329,26 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+  ntopng-exporter:
+    build:
+      context: ./ntopng-exporter
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - NTOPNG_URL=${NTOPNG_URL:-http://10.10.10.2:3002}
+      - NTOPNG_USER=${NTOPNG_USER:-admin}
+      - NTOPNG_PASSWORD=${NTOPNG_PASSWORD:-admin}
+      - EXPORTER_PORT=9101
+      - REQUEST_TIMEOUT=10
+      - LOG_LEVEL=INFO
+      - TOP_HOSTS_LIMIT=${TOP_HOSTS_LIMIT:-25}
+    ports:
+      - "9101:9101"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9101/metrics || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
   dcgm-exporter:
     labels:
       metrics.grafana.com/scrape: true

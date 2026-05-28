@@ -23,7 +23,7 @@ prometheus.scrape "integrations_alloy" {
   targets    = discovery.relabel.integrations_alloy.output
   forward_to = [prometheus.relabel.integrations_alloy.receiver]  
 
-  scrape_interval = "60s"
+  scrape_interval = "15s"
 }
 
 prometheus.relabel "integrations_alloy" {
@@ -58,7 +58,7 @@ prometheus.scrape "integrations_windows_exporter" {
   targets         = discovery.relabel.integrations_windows_exporter.output
   forward_to      = [prometheus.relabel.integrations_windows_exporter.receiver]
   job_name        = "integrations/windows_exporter"
-  scrape_interval = "60s"
+  scrape_interval = "15s"
 }
 
 prometheus.relabel "integrations_windows_exporter" {
@@ -100,77 +100,9 @@ prometheus.relabel "integrations_nvidia_gpu" {
   }
 }
 
-// llama-server per-model metrics (local ports assigned by llama-swap)
-// always-on: 10001, main swap group cycles through 10002-10010
-prometheus.scrape "llama_server_local" {
-  targets = [
-    {__address__ = "localhost:10001"},
-    {__address__ = "localhost:10002"},
-    {__address__ = "localhost:10003"},
-    {__address__ = "localhost:10004"},
-    {__address__ = "localhost:10005"},
-    {__address__ = "localhost:10006"},
-    {__address__ = "localhost:10007"},
-    {__address__ = "localhost:10008"},
-    {__address__ = "localhost:10009"},
-    {__address__ = "localhost:10010"},
-  ]
-  forward_to      = [prometheus.relabel.llama_server_local.receiver]
-  scrape_interval = "15s"
-  scrape_timeout  = "5s"
-}
-
-prometheus.relabel "llama_server_local" {
-  forward_to = [prometheus.remote_write.metrics_service.receiver]
-
-  rule {
-    target_label = "job"
-    replacement  = "integrations/llama-server"
-  }
-
-  rule {
-    target_label = "instance"
-    replacement  = constants.hostname
-  }
-
-  rule {
-    source_labels = ["__name__"]
-    regex         = "(llamacpp:.*|llama_.*|up)"
-    action        = "keep"
-  }
-}
-
-// llama-swap metrics (remote target on zenbook)
-prometheus.scrape "llama_swap" {
-  targets         = [{__address__ = "100.87.47.78:8080"}]
-  forward_to      = [prometheus.relabel.llama_swap.receiver]
-  scrape_interval = "15s"
-  scrape_timeout  = "5s"
-}
-
-prometheus.relabel "llama_swap" {
-  forward_to = [prometheus.remote_write.metrics_service.receiver]
-
-  rule {
-    target_label = "job"
-    replacement  = "integrations/llama-swap"
-  }
-
-  rule {
-    target_label = "instance"
-    replacement  = constants.hostname
-  }
-
-  rule {
-    source_labels = ["__name__"]
-    regex         = "(up|process_.*|go_.*|http_.*|cuda_.*|nvml_.*|llama_.*|llm_.*|gpu_.*|promhttp_.*|alloy_build_.*|prometheus_.*|process_start_time_seconds)"
-    action        = "keep"
-  }
-}
-
 prometheus.remote_write "metrics_service" {
   endpoint {
-    url = "http://100.65.230.106:38080/api/v1/push"
+    url = "http://100.65.230.106:9999/api/v1/metrics/write"
   }
 }
 
@@ -256,6 +188,73 @@ loki.source.windowsevent "logs_integrations_windows_exporter_system" {
 
 loki.write "logs_service" {
   endpoint {
-    url = "http://100.65.230.106:33100/loki/api/v1/push"
+    url = "http://100.65.230.106:9998/loki/api/v1/push"
   }
+}
+
+// ============================================================
+// llama-server per-model log files
+// Each model writes to C:\llama.cpp\logs\<model>.log
+// ============================================================
+local.file_match "llama_server_logs" {
+  path_targets = [{
+    __path__ = "C:\\llama.cpp\\llama-swap\\logs\\*.log",
+    job      = "integrations/llama-server",
+    instance = constants.hostname,
+  }]
+}
+
+loki.source.file "llama_server_logs" {
+  targets    = local.file_match.llama_server_logs.targets
+  forward_to = [loki.process.llama_server_logs.receiver]
+}
+
+loki.process "llama_server_logs" {
+  forward_to = [loki.write.logs_service.receiver]
+
+  // Extract model name from the log file path as a label
+  stage.regex {
+    expression = "(?P<model>[^\\\\]+)\\.log$"
+    source     = "filename"
+  }
+
+  stage.labels {
+    values = {
+      model = "",
+    }
+  }
+
+  // Extract log level from llama.cpp log lines: INFO/WARN/ERROR/DEBUG prefix
+  stage.regex {
+    expression = "^(?P<level>INFO|WARN|ERROR|DEBUG)"
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+}
+
+// ============================================================
+// llama-swap service logs
+// NSSM is configured to redirect stdout/stderr to this file.
+// Run once on the LLM server to configure:
+//   nssm set llama-swap AppStdout C:\llama.cpp\llama-swap\logs\llama-swap.log
+//   nssm set llama-swap AppStderr C:\llama.cpp\llama-swap\logs\llama-swap.log
+//   nssm set llama-swap AppStdoutCreationDisposition 4
+//   nssm set llama-swap AppStderrCreationDisposition 4
+//   nssm restart llama-swap
+// ============================================================
+local.file_match "llama_swap_logs" {
+  path_targets = [{
+    __path__ = "C:\\llama.cpp\\llama-swap\\logs\\llama-swap.log",
+    job      = "integrations/llama-swap",
+    instance = constants.hostname,
+  }]
+}
+
+loki.source.file "llama_swap_logs" {
+  targets    = local.file_match.llama_swap_logs.targets
+  forward_to = [loki.write.logs_service.receiver]
 }

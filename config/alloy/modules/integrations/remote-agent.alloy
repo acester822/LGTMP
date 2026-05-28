@@ -1,0 +1,50 @@
+//*Location: LGTMP Stack
+/*******************************************************
+* Module Components: component_remote_agent
+* Description: Receives metrics and logs pushed from a remote
+*              Alloy agent (e.g. a Windows LLM server) and fans
+*              them out to all configured destinations.
+*
+*              Metrics: prometheus.receive_http on port 9999
+*              Logs:    loki.source.api           on port 9998
+*
+*              The remote agent should target:
+*                metrics → http://<this-host>:9999/api/v1/push
+*                logs    → http://<this-host>:9998/loki/api/v1/push
+*******************************************************/
+
+declare "component_remote_agent" {
+
+	/***************************************************
+	* ARGUMENTS
+	***************************************************/
+	argument "forward_metrics_to" {
+		comment = "Must be a list(MetricsReceiver) where received metrics should be forwarded to"
+	}
+
+	argument "forward_logs_to" {
+		comment = "Must be a list(LogsReceiver) where received logs should be forwarded to"
+	}
+
+	/***************************************************
+	* Metrics receiver
+	***************************************************/
+	prometheus.receive_http "remote_agent" {
+		http {
+			listen_address = "0.0.0.0"
+			listen_port    = 9999
+		}
+		forward_to = argument.forward_metrics_to.value
+	}
+
+	/***************************************************
+	* Logs receiver
+	***************************************************/
+	loki.source.api "remote_agent" {
+		http {
+			listen_address = "0.0.0.0"
+			listen_port    = 9998
+		}
+		forward_to = argument.forward_logs_to.value
+	}
+}

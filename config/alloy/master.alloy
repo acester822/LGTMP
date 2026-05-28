@@ -61,6 +61,11 @@ integrations.component_ai_monitoring "default" {
 	scrape_interval = "15s"
 }
 
+integrations.component_remote_agent "llm_server" {
+	forward_metrics_to = [provider.self_hosted_stack.compose.metrics_receiver, provider.grafana_cloud.cloud.metrics_receiver]
+	forward_logs_to    = [provider.self_hosted_stack.compose.logs_receiver, provider.grafana_cloud.cloud.logs_receiver]
+}
+
 integrations.component_opnsense "default" {
 	forward_to      = [provider.self_hosted_stack.compose.metrics_receiver, provider.grafana_cloud.cloud.metrics_receiver]
 	scrape_interval = "30s"

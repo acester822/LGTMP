@@ -1,6 +1,0 @@
-// Example values for OPNsense monitoring.
-// Load by setting these env vars in compose and enabling OPNsense monitoring.
-//
-// OPNSENSE_MONITORING_ENABLED=true
-// OPNSENSE_METRICS_TARGET=opnsense.local:9100
-// OPNSENSE_METRICS_PATH=/metrics

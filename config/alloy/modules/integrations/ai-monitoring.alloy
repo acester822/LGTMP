@@ -42,6 +42,12 @@ declare "component_ai_monitoring" {
 		default  = coalesce(sys.env("LLM_API_METRICS_TARGET"), "")
 	}
 
+	// Base address of the LLM server for per-model llama-server scrapes
+	argument "llama_server_host" {
+		optional = true
+		default  = coalesce(sys.env("LLAMA_SERVER_HOST"), "100.87.47.78")
+	}
+
 	discovery.relabel "ai_targets" {
 		targets = [
 			{
@@ -132,6 +138,49 @@ declare "component_ai_monitoring" {
 			action        = "keep"
 			source_labels = ["__name__"]
 			regex         = "(llm_inference_latency_seconds.*|llm_tokens_generated_total|probe_success|up)"
+		}
+	}
+
+	// Per-model llama-server instances managed by llama-swap
+	// always-on: 10001, swap group cycles through 10002-10011
+	prometheus.scrape "llama_server_ports" {
+		targets = [
+			{__address__ = argument.llama_server_host.value + ":10001"},
+			{__address__ = argument.llama_server_host.value + ":10002"},
+			{__address__ = argument.llama_server_host.value + ":10003"},
+			{__address__ = argument.llama_server_host.value + ":10004"},
+			{__address__ = argument.llama_server_host.value + ":10005"},
+			{__address__ = argument.llama_server_host.value + ":10006"},
+			{__address__ = argument.llama_server_host.value + ":10007"},
+			{__address__ = argument.llama_server_host.value + ":10008"},
+			{__address__ = argument.llama_server_host.value + ":10009"},
+			{__address__ = argument.llama_server_host.value + ":10010"},
+			{__address__ = argument.llama_server_host.value + ":10011"},
+		]
+
+		scrape_interval = argument.scrape_interval.value
+		scrape_timeout  = argument.scrape_timeout.value
+
+		forward_to = [prometheus.relabel.llama_server_ports.receiver]
+	}
+
+	prometheus.relabel "llama_server_ports" {
+		forward_to = argument.forward_to.value
+
+		rule {
+			target_label = "job"
+			replacement  = "integrations/llama-server"
+		}
+
+		rule {
+			source_labels = ["__address__"]
+			target_label  = "instance"
+		}
+
+		rule {
+			action        = "keep"
+			source_labels = ["__name__"]
+			regex         = "(llamacpp:.*|llama_.*|up)"
 		}
 	}
 }

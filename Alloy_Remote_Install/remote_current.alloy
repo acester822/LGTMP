@@ -80,7 +80,7 @@ prometheus.relabel "integrations_windows_exporter" {
 
 prometheus.remote_write "metrics_service" {
   endpoint {
-    url = "http://<ip_here>:38080/api/v1/push"
+    url = "http://100.65.230.106:9999/api/v1/metrics/write"
   }
 }
 
@@ -191,6 +191,6 @@ loki.process "logs_locally_sourced" {
 /* Step 5 - Loki Write - Send to Loki */
 loki.write "logs_service" {
   endpoint {
-    url = "http://<ip_here>:33100/loki/api/v1/push"
+    url = "http://100.65.230.106:9998/loki/api/v1/push"
   }
 }
