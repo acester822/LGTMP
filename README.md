@@ -6,7 +6,7 @@
 
 > **NOTE**:
 > As of 5/18/2026
-> 
+>
 > This has progressed into its own unique beast. I have not seen an alloy before on github that can do all of the things this one can. 
 
 ## Done / System Setup
@@ -48,15 +48,13 @@
 - [ ] Add a Linux Node Exporter / Receiver
 - [ ] Much more, as I intend to make this an All In One that anyone could easily use
 
-
-
 > [!NOTE]
 > For Windows Metrics, there are two different ways you can do it. If you use Windows Exporter, everything works perfect, logs and metrics. My issue was that Doing it that way does not allow you to limit the garbage metrics like Alloy can. Making the entire process start to finish as lean as possible is one of my main goals, so I then built another alloy config to use remotely on a windows machine that will pull only the metrics needed for the dashboards. The issue is even though they are both build exactly the same, for some reason random metrics are having a hard time showing up in grafana even though I can manually get them to work in promql. This tells me there is an issue in the dashboard variables somehow even though they are correct. 
 
 > [!NOTE]
 > One of the main reasons I never used grafana or the agent before, was because of heavy CPU usage, most always with Loki, this was due to container logs and the fact that Loki has no idea what to do if people, aka its users do not have their logs trimmed and proper. Loki will keep trying to reprocess the old logs, even if you have max age's set as it has to scan the files to see the age.......
 
-## \#How-To-Install
+## \# How-To-Install
 
 1. Pull project from git:
 
@@ -78,17 +76,17 @@ docker compose --profile gpu up
 
 Grafana LGTMP Stack default port-mapping
 
-| Port-mapping                  | Component     | Description                                                                                                 |
-|-------------------------------|---------------|-------------------------------------------------------------------------------------------------------------|
-| `12345:12345`, `4317`, `4318`, `6831` | [Grafana Alloy](https://grafana.com/docs/alloy/latest/) | Expose `12345` port so we can directly access `Alloy` inside container                                          |
-| `33100:3100`                    | [Loki](https://github.com/grafana/loki)          | Expose `33100` port so we can directly access `loki` inside container                                           |
-| `3000:3000`, `6060`               | [Grafana](https://github.com/grafana/grafana)       | Expose `3000` port so we can directly access `grafana` inside container                                         |
-| `33200:3200`, `4317`, `4318`        | [Tempo](https://github.com/grafana/tempo)         | Expose `33200` port so we can directly access `tempo` inside container                                          |
-| `38080:8080`                    | [Mimir](https://github.com/grafana/mimir)         | Expose `38080` port so we can directly access `mimir` inside container                                          |
-| `34040:4040`                    | [Pyroscope](https://github.com/grafana/pyroscope)     | Expose `34040` port so we can directly access `pyroscope` inside container                                      |
-| `9001:9001`, `9000`               | [Minio](https://github.com/minio/minio)         | Expose `9001` port so we can access `minio` console with `MINIO_ROOT_USER=lgtmp`, `MINIO_ROOT_PASSWORD=supersecret` |
-| `3001:3000`                    | [ntopng](https://github.com/ntop/ntopng)         | Expose `3001` for ntopng UI via nginx gateway routing |
-| `9400:9400`                    | [NVIDIA DCGM Exporter](https://github.com/NVIDIA/dcgm-exporter)         | GPU telemetry endpoint (enabled with `--profile gpu`) |
+| Port-mapping                          | Component                                                       | Description                                                                                                         |
+| ------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `12345:12345`, `4317`, `4318`, `6831` | [Grafana Alloy](https://grafana.com/docs/alloy/latest/)         | Expose `12345` port so we can directly access `Alloy` inside container                                              |
+| `33100:3100`                          | [Loki](https://github.com/grafana/loki)                         | Expose `33100` port so we can directly access `loki` inside container                                               |
+| `3000:3000`, `6060`                   | [Grafana](https://github.com/grafana/grafana)                   | Expose `3000` port so we can directly access `grafana` inside container                                             |
+| `33200:3200`, `4317`, `4318`          | [Tempo](https://github.com/grafana/tempo)                       | Expose `33200` port so we can directly access `tempo` inside container                                              |
+| `38080:8080`                          | [Mimir](https://github.com/grafana/mimir)                       | Expose `38080` port so we can directly access `mimir` inside container                                              |
+| `34040:4040`                          | [Pyroscope](https://github.com/grafana/pyroscope)               | Expose `34040` port so we can directly access `pyroscope` inside container                                          |
+| `9001:9001`, `9000`                   | [Minio](https://github.com/minio/minio)                         | Expose `9001` port so we can access `minio` console with `MINIO_ROOT_USER=lgtmp`, `MINIO_ROOT_PASSWORD=supersecret` |
+| `3001:3000`                           | [ntopng](https://github.com/ntop/ntopng)                        | Expose `3001` for ntopng UI via nginx gateway routing                                                               |
+| `9400:9400`                           | [NVIDIA DCGM Exporter](https://github.com/NVIDIA/dcgm-exporter) | GPU telemetry endpoint (enabled with `--profile gpu`)                                                               |
 
 ## ntopng setup
 

@@ -7,10 +7,6 @@ multitenancy_enabled: true
 usage_report:
   reporting_enabled: false
 
-compactor:
-  compaction:
-    block_retention: 1h
-
 distributor:
   receivers:
     otlp:
@@ -19,11 +15,6 @@ distributor:
           endpoint: tempo:4317
         http:
           endpoint: tempo:4318
-
-ingester:
-  trace_idle_period: 10s
-  max_block_bytes: 1_000_000
-  max_block_duration: 5m
 
 server:
   http_listen_port: 3200
@@ -56,14 +47,10 @@ metrics_generator:
       send_native_histograms: true
       headers:
         X-Scope-OrgID: "anonymous"
-  traces_storage:
-    path: /tmp/tempo/generator/traces
 
 storage:
   trace:
     backend: s3
-    wal:
-      path: /tmp/tempo/wal
     s3:
       bucket: tempo-data
       endpoint: ${TEMPO_S3_ENDPOINT:-minio:9000}
@@ -71,6 +58,11 @@ storage:
       secret_key: ${TEMPO_S3_SECRET_KEY:-supersecret}
       insecure: ${TEMPO_S3_INSECURE:-true}
       tls_insecure_skip_verify: true
+    wal:
+      path: /tmp/tempo/wal
+
+compaction:
+  block_retention: 1h
 
 # https://github.com/grafana/tempo/blob/main/docs/sources/tempo/configuration/_index.md#cache
 cache:
@@ -93,5 +85,4 @@ overrides:
       processors:
       - service-graphs
       - span-metrics
-      - local-blocks
       generate_native_histograms: both
