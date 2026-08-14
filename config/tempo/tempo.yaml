@@ -60,8 +60,12 @@ storage:
       tls_insecure_skip_verify: true
     wal:
       path: /tmp/tempo/wal
+
+backend_scheduler:
+  provider:
     compaction:
-      block_retention: 1h
+      compaction:
+        block_retention: 1h
 
 # https://github.com/grafana/tempo/blob/main/docs/sources/tempo/configuration/_index.md#cache
 cache:
